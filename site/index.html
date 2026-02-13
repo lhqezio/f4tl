@@ -6,7 +6,7 @@
     <title>f4tl — MCP Server for Autonomous Full-Stack QA</title>
     <meta
       name="description"
-      content="Give an AI agent a browser, your logs, your database, and your codebase — it tests your app and files bugs. 41 MCP tools, 10 prompts, live dashboard."
+      content="Give an AI agent a browser, your logs, your database, and your codebase — it tests your app and files bugs. 42 MCP tools, 10 prompts, live dashboard."
     />
     <meta property="og:title" content="f4tl — Autonomous Full-Stack QA" />
     <meta
@@ -98,7 +98,7 @@
         <div
           class="inline-block mb-6 px-3 py-1 text-xs font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full"
         >
-          MCP Server &middot; 41 Tools &middot; 10 Prompts
+          MCP Server &middot; 42 Tools &middot; 10 Prompts
         </div>
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
           Autonomous<br />
@@ -369,7 +369,7 @@
     <!-- Tools -->
     <section id="tools" class="py-20 px-6 border-t border-gray-800/50">
       <div class="max-w-6xl mx-auto">
-        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">41 MCP Tools</h2>
+        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">42 MCP Tools</h2>
         <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
           Organized into categories. The agent picks the right tool for each testing step.
         </p>
@@ -483,13 +483,13 @@
           </div>
           <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
             <div class="flex items-center justify-between mb-3">
-              <h3 class="font-semibold">Framework &amp; Auth</h3>
+              <h3 class="font-semibold">Framework, Auth &amp; Config</h3>
               <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
-                >4</span
+                >5</span
               >
             </div>
             <p class="text-xs font-mono text-gray-500 leading-relaxed">
-              detect_framework auth_login get_app_profile suppress_error
+              detect_framework auth_login get_app_profile suppress_error generate_config
             </p>
           </div>
         </div>
@@ -659,7 +659,7 @@ f4tl init</code></pre>
           <div class="relative inline-block">
             <pre
               class="bg-gray-900 border border-gray-800 rounded-lg px-6 py-3 inline-block"
-            ><code id="code-dashboard" class="text-sm font-mono text-orange-400">f4tl serve --dashboard</code></pre>
+            ><code id="code-dashboard" class="text-sm font-mono text-orange-400">f4tl start</code></pre>
             <button
               data-copy="code-dashboard"
               class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"

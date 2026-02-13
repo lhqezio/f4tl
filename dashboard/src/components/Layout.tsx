@@ -4,6 +4,8 @@ const links = [
   { to: '/', label: 'Sessions' },
   { to: '/live', label: 'Live' },
   { to: '/history', label: 'History' },
+  { to: '/config', label: 'Config' },
+  { to: '/guide', label: 'Guide' },
 ];
 
 export default function Layout() {

@@ -172,3 +172,27 @@ export async function fetchComparison(a: string, b: string): Promise<SessionComp
   if (!res.ok) throw new Error('Failed to fetch comparison');
   return res.json();
 }
+
+// ── Config Types ─────────────────────────────────────────────────────────────
+
+export interface ConfigFeatures {
+  auth: boolean;
+  logs: boolean;
+  database: boolean;
+  webhooks: boolean;
+  journeys: boolean;
+  appProfile: boolean;
+  learning: boolean;
+}
+
+export interface ConfigResponse {
+  config: Record<string, unknown>;
+  features: ConfigFeatures;
+  detectedFramework: string | null;
+}
+
+export async function fetchConfig(): Promise<ConfigResponse> {
+  const res = await fetch(`${BASE}/config`);
+  if (!res.ok) throw new Error('Failed to fetch config');
+  return res.json();
+}

@@ -4,7 +4,7 @@ MCP server for autonomous full-stack QA. Give an AI agent a browser, your logs, 
 
 ## Features
 
-- **41 MCP tools** across 12 categories: browser, network, code, context, report, logs, database, webhook, learning, journey, framework, auth
+- **42 MCP tools** across 13 categories: browser, network, code, context, report, logs, database, webhook, learning, journey, framework, auth, config-gen
 - **10 MCP prompts** for common QA workflows (smoke test, full QA, regression, accessibility, forms, performance, visual inventory, multi-actor, webhook, regression-run)
 - **Browser automation** via Playwright — navigate, click, fill, type, screenshot, evaluate JS, accessibility tree
 - **Network capture** — inspect requests/responses, mock/block/delay with intercept rules, WebSocket monitoring
@@ -17,7 +17,8 @@ MCP server for autonomous full-stack QA. Give an AI agent a browser, your logs, 
 - **Report system** — record bugs and findings, generate reports in Markdown/JSON/HTML
 - **Log collection** — tail process output or log files, search with regex, parse JSON/CLF/plain formats
 - **Database inspection** — read-only SQL queries, schema introspection, EXPLAIN ANALYZE (PostgreSQL)
-- **Live dashboard** — React SPA with real-time WebSocket updates, session timeline, screenshot viewer
+- **Config generator** — `generate_config` tool analyzes your project (framework, routes, auth, database, env vars) so the AI can compose a config
+- **Live dashboard** — React SPA with real-time WebSocket updates, session timeline, screenshot viewer, config viewer, getting started guide
 - **Session tracking** — step recording, screenshot capture, artifact persistence
 
 ## Quick Start
@@ -225,6 +226,12 @@ See [`examples/f4tl.config.ts`](examples/f4tl.config.ts) for a fully annotated c
 | ---------------- | -------------------------------------------- |
 | `suppress_error` | Add runtime pattern to suppress known errors |
 
+### Config Generator (1 tool)
+
+| Tool              | Description                                                     |
+| ----------------- | --------------------------------------------------------------- |
+| `generate_config` | Analyze project to gather info for generating an f4tl.config.ts |
+
 ## Prompts
 
 MCP prompts are pre-built conversation starters your MCP client can invoke.
@@ -247,7 +254,10 @@ MCP prompts are pre-built conversation starters your MCP client can invoke.
 The live dashboard shows real-time session progress with WebSocket updates.
 
 ```bash
-# Co-host with MCP server
+# Co-host with MCP server (shortcut)
+f4tl start
+
+# Or explicitly
 f4tl serve --dashboard
 
 # Or run standalone (browse historical sessions)
@@ -260,6 +270,8 @@ The dashboard provides:
 - Step timeline with screenshots and metadata
 - Bug and finding cards with severity/category badges
 - Real-time updates during active sessions
+- **Config viewer** — feature flags grid, collapsible config sections with masked secrets
+- **Getting started guide** — setup steps, config health checks, tool reference, quick links
 
 ## Reports
 
@@ -282,6 +294,9 @@ Reports include:
 ```
 f4tl serve [--headless] [--dashboard]
   Start the MCP server. Reads f4tl.config.ts from cwd.
+
+f4tl start [--headless]
+  Start the MCP server with the live dashboard (alias for serve --dashboard).
 
 f4tl init [--force]
   Generate f4tl.config.ts with auto-detected project settings.

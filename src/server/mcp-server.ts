@@ -53,6 +53,7 @@ import { FrameworkTools } from './tools/framework.js';
 import { AuthTools, authLoginSchema } from './tools/auth.js';
 import { JourneyRunner } from '../core/journey-runner.js';
 import { JourneyTools, getJourneySchema } from './tools/journey.js';
+import { ConfigGenTools, generateConfigSchema } from './tools/config-gen.js';
 import { registerPrompts } from './prompts.js';
 import type { F4tlConfig } from '../types/index.js';
 
@@ -76,6 +77,7 @@ export class F4tlServer {
   private frameworkTools: FrameworkTools;
   private authTools: AuthTools | null = null;
   private journeyTools: JourneyTools | null = null;
+  private configGenTools: ConfigGenTools;
 
   constructor(private config: F4tlConfig) {
     this.mcp = new McpServer(
@@ -97,6 +99,7 @@ export class F4tlServer {
     );
     this.suppressionTools = new SuppressionTools(this.browserManager);
     this.frameworkTools = new FrameworkTools(this.browserManager, config.codebase);
+    this.configGenTools = new ConfigGenTools(this.codeExplorer, config.codebase);
 
     // Conditional: auth
     if (config.auth && Object.keys(config.auth).length > 0) {
@@ -140,6 +143,7 @@ export class F4tlServer {
     this.registerReportTools();
     this.registerSuppressionTools();
     this.registerFrameworkTools();
+    this.registerConfigGenTools();
     if (config.app) this.registerAppTools();
 
     if (this.authTools) this.registerAuthTools();
@@ -551,6 +555,19 @@ export class F4tlServer {
     );
   }
 
+  // ── Config Gen Tools (1) ────────────────────────────────────────────────
+
+  private registerConfigGenTools(): void {
+    const t = this.configGenTools;
+
+    this.mcp.tool(
+      'generate_config',
+      'Analyze the project to gather information for generating an f4tl.config.ts. Returns framework, routes, auth patterns, database, env vars, and base URL candidates.',
+      generateConfigSchema.shape,
+      (params) => t.generateConfig(generateConfigSchema.parse(params)),
+    );
+  }
+
   // ── Auth Tools (1) ───────────────────────────────────────────────────────
 
   private registerAuthTools(): void {
@@ -703,6 +720,7 @@ export class F4tlServer {
       4 + // report
       1 + // suppression
       1 + // framework detection
+      1 + // config gen
       (this.config.app ? 1 : 0) + // app profile
       (this.config.auth && Object.keys(this.config.auth).length > 0 ? 1 : 0) + // browser_auth (context)
       (this.authTools ? 1 : 0) + // auth_login

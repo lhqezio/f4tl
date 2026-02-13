@@ -22,7 +22,7 @@ f4tl serve
 Or with the live dashboard:
 
 ```bash
-f4tl serve --dashboard
+f4tl start
 ```
 
 ### 3. MCP client config
@@ -45,7 +45,7 @@ To co-host the dashboard, use `"args": ["serve", "--dashboard"]`.
 
 ---
 
-## Available Tools (41)
+## Available Tools (42)
 
 ### Browser (15)
 
@@ -180,6 +180,12 @@ Use these to follow and track multi-step test flows defined in config.
 | Tool             | What it does                                                       |
 | ---------------- | ------------------------------------------------------------------ |
 | `suppress_error` | Add a runtime pattern to suppress known console or network errors. |
+
+### Config Generator (1)
+
+| Tool              | What it does                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `generate_config` | Analyze the project (framework, routes, auth, database, env vars, base URL) to gather info for composing an f4tl.config.ts. |
 
 ---
 
@@ -461,6 +467,7 @@ Reports are saved to `.f4tl/reports/`:
 | Command                                                                  | Description                             |
 | ------------------------------------------------------------------------ | --------------------------------------- |
 | `f4tl serve [--headless] [--dashboard]`                                  | Start the MCP server                    |
+| `f4tl start [--headless]`                                                | Serve + dashboard (shortcut)            |
 | `f4tl init [--force]`                                                    | Generate config with auto-detection     |
 | `f4tl dashboard [--port]`                                                | Browse historical sessions (standalone) |
 | `f4tl sessions [--json] [--limit]`                                       | List past sessions                      |
@@ -482,3 +489,4 @@ Reports are saved to `.f4tl/reports/`:
 - **Use `suppress_error` for noisy third-party errors** — e.g. analytics scripts, ResizeObserver warnings. Keeps reports clean.
 - **Follow journeys when configured** — `list_journeys` → `get_journey` → execute steps → `journey_status` to track progress.
 - **Use `get_app_profile` for context** — if the app profile is configured, it tells you what pages exist, which need auth, and what to ignore.
+- **Use `generate_config` for new projects** — it analyzes framework, routes, auth patterns, database, env vars, and base URL to help you compose an optimal config.

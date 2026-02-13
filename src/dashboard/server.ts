@@ -10,6 +10,7 @@ import type { SessionHistory } from '../core/session-history.js';
 import type {
   BugSeverity,
   DashboardConfig,
+  F4tlConfig,
   SessionConfig,
   SessionEvent,
   SessionListItem,
@@ -31,6 +32,7 @@ export class DashboardServer {
     private sessionManager: SessionManager | null = null,
     private reportManager: ReportManager | null = null,
     private sessionHistory: SessionHistory | null = null,
+    private fullConfig: F4tlConfig | null = null,
   ) {
     this.app = new Hono();
     const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({
@@ -240,6 +242,37 @@ export class DashboardServer {
       }
     });
 
+    // Config viewer
+    api.get('/config', async (c) => {
+      if (!this.fullConfig) {
+        return c.json({ error: 'Config not available' }, 404);
+      }
+
+      const cfg = this.fullConfig;
+      const sanitized = sanitizeConfig(cfg);
+
+      const features = {
+        auth: !!cfg.auth && Object.keys(cfg.auth).length > 0,
+        logs: !!cfg.logs && Object.keys(cfg.logs).length > 0,
+        database: !!cfg.database,
+        webhooks: !!cfg.webhooks,
+        journeys: !!cfg.journeys && Object.keys(cfg.journeys).length > 0,
+        appProfile: !!cfg.app,
+        learning: cfg.learning?.enabled !== false,
+      };
+
+      let detectedFramework: string | null = null;
+      try {
+        const { detectFrameworkFromPackageJson } = await import('../core/framework-detector.js');
+        const detected = await detectFrameworkFromPackageJson(cfg.codebase.projectRoot);
+        detectedFramework = detected.framework;
+      } catch {
+        // framework detection is optional
+      }
+
+      return c.json({ config: sanitized, features, detectedFramework });
+    });
+
     this.app.route('/api', api);
 
     // WebSocket
@@ -356,4 +389,50 @@ export class DashboardServer {
       this.server = null;
     }
   }
+}
+
+// ── Config Sanitization ──────────────────────────────────────────────────────
+
+function sanitizeConfig(cfg: F4tlConfig): Record<string, unknown> {
+  const clone = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
+
+  // Mask database secrets
+  const db = clone.database as Record<string, unknown> | undefined;
+  if (db) {
+    if (db.connectionString) db.connectionString = '***';
+    if (db.password) db.password = '***';
+  }
+
+  // Mask auth env var values (show var name + " (env)")
+  const auth = clone.auth as Record<string, Record<string, unknown>> | undefined;
+  if (auth) {
+    for (const role of Object.values(auth)) {
+      const form = role.formLogin as Record<string, unknown> | undefined;
+      if (form) {
+        if (form.usernameEnv) form.usernameEnv = `${form.usernameEnv} (env)`;
+        if (form.passwordEnv) form.passwordEnv = `${form.passwordEnv} (env)`;
+      }
+      const jwt = role.jwt as Record<string, unknown> | undefined;
+      if (jwt?.tokenEnv) jwt.tokenEnv = `${jwt.tokenEnv} (env)`;
+      const oauth = role.oauth as Record<string, unknown> | undefined;
+      if (oauth?.clientIdEnv) oauth.clientIdEnv = `${oauth.clientIdEnv} (env)`;
+      const cookies = role.cookies as { items?: { valueEnv?: string }[] } | undefined;
+      if (cookies?.items) {
+        for (const item of cookies.items) {
+          if (item.valueEnv) item.valueEnv = `${item.valueEnv} (env)`;
+        }
+      }
+    }
+  }
+
+  // Mask webhook signing secrets
+  const webhooks = clone.webhooks as Record<string, unknown> | undefined;
+  if (webhooks?.signingSecrets) {
+    const secrets = webhooks.signingSecrets as Record<string, string>;
+    for (const key of Object.keys(secrets)) {
+      secrets[key] = '***';
+    }
+  }
+
+  return clone;
 }

@@ -2,6 +2,42 @@ import { defineCommand } from 'citty';
 import { writeFile, readdir, stat, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+async function runServe(args: { headless?: boolean; dashboard?: boolean }) {
+  // Dynamic imports to keep CLI startup fast
+  const { loadF4tlConfig } = await import('../config/loader.js');
+  const { F4tlServer } = await import('../server/mcp-server.js');
+
+  const overrides: Record<string, unknown> = {};
+  if (args.headless !== undefined) {
+    overrides.browser = { headless: args.headless };
+  }
+
+  const config = await loadF4tlConfig(overrides as never);
+  console.error('[f4tl] Config loaded');
+
+  const server = new F4tlServer(config);
+  await server.start();
+
+  if (args.dashboard) {
+    const { DashboardServer } = await import('../dashboard/server.js');
+    const { SessionHistory } = await import('../core/session-history.js');
+    const sessionHistory =
+      config.learning?.enabled !== false ? new SessionHistory(config.session.outputDir) : null;
+    const dashboard = new DashboardServer(
+      config.dashboard,
+      config.session,
+      server.getSessionManager(),
+      server.getReportManager(),
+      sessionHistory,
+      config,
+    );
+    await dashboard.start();
+  }
+
+  // Keep the process alive
+  await new Promise(() => {});
+}
+
 const serveCommand = defineCommand({
   meta: { name: 'serve', description: 'Start the f4tl MCP server' },
   args: {
@@ -16,38 +52,20 @@ const serveCommand = defineCommand({
     },
   },
   async run({ args }) {
-    // Dynamic imports to keep CLI startup fast
-    const { loadF4tlConfig } = await import('../config/loader.js');
-    const { F4tlServer } = await import('../server/mcp-server.js');
+    await runServe(args);
+  },
+});
 
-    const overrides: Record<string, unknown> = {};
-    if (args.headless !== undefined) {
-      overrides.browser = { headless: args.headless };
-    }
-
-    const config = await loadF4tlConfig(overrides as never);
-    console.error('[f4tl] Config loaded');
-
-    const server = new F4tlServer(config);
-    await server.start();
-
-    if (args.dashboard) {
-      const { DashboardServer } = await import('../dashboard/server.js');
-      const { SessionHistory } = await import('../core/session-history.js');
-      const sessionHistory =
-        config.learning?.enabled !== false ? new SessionHistory(config.session.outputDir) : null;
-      const dashboard = new DashboardServer(
-        config.dashboard,
-        config.session,
-        server.getSessionManager(),
-        server.getReportManager(),
-        sessionHistory,
-      );
-      await dashboard.start();
-    }
-
-    // Keep the process alive
-    await new Promise(() => {});
+const startCommand = defineCommand({
+  meta: { name: 'start', description: 'Start the MCP server with the live dashboard' },
+  args: {
+    headless: {
+      type: 'boolean',
+      description: 'Run browser in headless mode',
+    },
+  },
+  async run({ args }) {
+    await runServe({ ...args, dashboard: true });
   },
 });
 
@@ -434,6 +452,7 @@ const dashboardCommand = defineCommand({
       null,
       null,
       sessionHistory,
+      config,
     );
     await dashboard.start();
 
@@ -450,6 +469,7 @@ export const main = defineCommand({
   },
   subCommands: {
     serve: serveCommand,
+    start: startCommand,
     init: initCommand,
     clean: cleanCommand,
     sessions: sessionsCommand,
