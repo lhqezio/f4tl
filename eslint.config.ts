@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   // Global ignores
-  { ignores: ['dist/', 'node_modules/', '.f4tl/', 'coverage/'] },
+  { ignores: ['dist/', 'node_modules/', '.f4tl/', 'coverage/', 'site/'] },
 
   // Base: JS recommended
   eslint.configs.recommended,

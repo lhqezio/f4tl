@@ -23,6 +23,8 @@
     "build:all": "tsup && vite build dashboard",
     "dev": "tsup --watch",
     "dev:dashboard": "vite dev dashboard",
+    "build:site": "vite build site",
+    "dev:site": "vite dev site",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

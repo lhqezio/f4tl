@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Code block scrollbar */
+pre::-webkit-scrollbar {
+  height: 6px;
+}
+pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+pre::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+
+/* Copy button feedback */
+.copied {
+  color: #4ade80 !important;
+}

@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>f4tl — MCP Server for Autonomous Full-Stack QA</title>
+    <meta
+      name="description"
+      content="Give an AI agent a browser, your logs, your database, and your codebase — it tests your app and files bugs. 34 MCP tools, 10 prompts, live dashboard."
+    />
+    <meta property="og:title" content="f4tl — Autonomous Full-Stack QA" />
+    <meta
+      property="og:description"
+      content="MCP server that gives AI agents browser automation, network capture, code exploration, and database access to autonomously QA web apps."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lhqezio.github.io/f4tl/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/svg+xml" href="/f4tl/favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body class="bg-gray-950 text-gray-100 antialiased">
+    <!-- Nav -->
+    <nav
+      class="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur border-b border-gray-800"
+    >
+      <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+        <a href="#" class="text-lg font-bold tracking-tight text-orange-400">f4tl</a>
+        <button
+          id="nav-toggle"
+          class="sm:hidden text-gray-400 hover:text-gray-200"
+          aria-label="Menu"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        <div class="hidden sm:flex items-center gap-6">
+          <a href="#features" class="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >Features</a
+          >
+          <a href="#tools" class="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >Tools</a
+          >
+          <a href="#prompts" class="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >Prompts</a
+          >
+          <a href="#quickstart" class="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >Get Started</a
+          >
+          <a
+            href="https://github.com/lhqezio/f4tl"
+            target="_blank"
+            rel="noopener"
+            class="text-sm text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"
+              />
+            </svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+      <div
+        id="nav-menu"
+        class="sm:hidden hidden bg-gray-900 border-b border-gray-800 px-6 pb-4 space-y-3"
+      >
+        <a href="#features" class="block text-sm text-gray-400 hover:text-gray-200">Features</a>
+        <a href="#tools" class="block text-sm text-gray-400 hover:text-gray-200">Tools</a>
+        <a href="#prompts" class="block text-sm text-gray-400 hover:text-gray-200">Prompts</a>
+        <a href="#quickstart" class="block text-sm text-gray-400 hover:text-gray-200"
+          >Get Started</a
+        >
+        <a
+          href="https://github.com/lhqezio/f4tl"
+          target="_blank"
+          rel="noopener"
+          class="block text-sm text-gray-400 hover:text-gray-200"
+          >GitHub</a
+        >
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-20 px-6 relative overflow-hidden">
+      <div
+        class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(251,146,60,0.08)_0%,_transparent_70%)]"
+      ></div>
+      <div class="max-w-4xl mx-auto text-center relative">
+        <div
+          class="inline-block mb-6 px-3 py-1 text-xs font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full"
+        >
+          MCP Server &middot; 34 Tools &middot; 10 Prompts
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+          Autonomous<br />
+          <span class="text-orange-400">Full-Stack QA</span>
+        </h1>
+        <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          Give an AI agent a browser, your logs, your database, and your codebase &mdash; it tests
+          your app and files bugs.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a
+            href="#quickstart"
+            class="inline-flex items-center justify-center px-6 py-3 bg-orange-400 text-gray-950 font-semibold rounded-lg hover:bg-orange-300 transition-colors"
+          >
+            Get Started
+          </a>
+          <a
+            href="https://github.com/lhqezio/f4tl"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center justify-center px-6 py-3 border border-gray-700 text-gray-300 font-semibold rounded-lg hover:border-gray-500 hover:text-gray-100 transition-colors"
+          >
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="py-20 px-6">
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">
+          Everything an AI Agent Needs to QA Your App
+        </h2>
+        <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+          A complete toolkit that turns any MCP-compatible AI into an autonomous QA engineer.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Browser Automation -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Browser Automation</h3>
+            <p class="text-gray-400 text-sm">
+              15 Playwright tools: navigate, click, fill, screenshot, evaluate JS, accessibility
+              tree, and more.
+            </p>
+          </div>
+          <!-- Network Capture -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Network Capture</h3>
+            <p class="text-gray-400 text-sm">
+              Inspect requests and responses, mock/block/delay with intercept rules, monitor
+              WebSocket messages.
+            </p>
+          </div>
+          <!-- Code Exploration -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Code Exploration</h3>
+            <p class="text-gray-400 text-sm">
+              Ripgrep search, file reading, glob find, and git diff to understand behavior and find
+              root causes.
+            </p>
+          </div>
+          <!-- Multi-Context -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Multi-Actor Testing</h3>
+            <p class="text-gray-400 text-sm">
+              Isolated browser contexts for multi-user scenarios. Buyer, seller, admin &mdash; all
+              interacting in the same app.
+            </p>
+          </div>
+          <!-- Report System -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Bug Reports</h3>
+            <p class="text-gray-400 text-sm">
+              File bugs with severity, repro steps, and screenshots. Generate rich HTML, Markdown,
+              or JSON reports.
+            </p>
+          </div>
+          <!-- Live Dashboard -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-5 h-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Live Dashboard</h3>
+            <p class="text-gray-400 text-sm">
+              React SPA with real-time WebSocket updates. Watch sessions unfold with a step timeline
+              and screenshot viewer.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tools -->
+    <section id="tools" class="py-20 px-6 border-t border-gray-800/50">
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">34 MCP Tools</h2>
+        <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+          Organized into categories. The agent picks the right tool for each testing step.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Browser</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >15</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              navigate click fill type select hover press scroll screenshot evaluate resize wait
+              back forward accessibility_tree
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Network</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >4</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              get_requests intercept clear_intercepts get_websockets
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Code</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >4</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              search read find_files git_diff
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Report</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >4</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              create_bug add_finding generate get_session_summary
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Webhook</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >2</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">discover fire</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Learning</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >3</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              get_history get_bugs compare
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">Context</h3>
+              <span class="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded"
+                >2-3</span
+              >
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">
+              new_context switch_context auth
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 opacity-70">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">
+                Logs <span class="text-xs text-gray-500 font-normal">optional</span>
+              </h3>
+              <span class="text-xs font-mono text-gray-500 bg-gray-800 px-2 py-0.5 rounded">3</span>
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">tail get search</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 opacity-70">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold">
+                Database <span class="text-xs text-gray-500 font-normal">optional</span>
+              </h3>
+              <span class="text-xs font-mono text-gray-500 bg-gray-800 px-2 py-0.5 rounded">3</span>
+            </div>
+            <p class="text-xs font-mono text-gray-500 leading-relaxed">query schema explain</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Prompts -->
+    <section id="prompts" class="py-20 px-6 border-t border-gray-800/50">
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">10 Pre-Built QA Workflows</h2>
+        <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+          MCP prompts that kick off complete testing scenarios. Invoke them from your MCP client.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">smoke-test</code>
+            <p class="text-gray-400 text-sm">
+              Quick health check &mdash; navigate, screenshot, check for console errors and 4xx/5xx.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">full-qa</code>
+            <p class="text-gray-400 text-sm">
+              Comprehensive pass &mdash; all pages, forms, a11y, responsive, generate HTML report.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">regression-test</code>
+            <p class="text-gray-400 text-sm">
+              After a deploy &mdash; re-run key user flows, compare against a baseline session.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">accessibility-audit</code>
+            <p class="text-gray-400 text-sm">
+              Audit ARIA labels, alt text, heading structure, keyboard navigation, contrast.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">form-test</code>
+            <p class="text-gray-400 text-sm">
+              Test form validation &mdash; empty, valid, invalid, XSS payloads, boundary values.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">performance-check</code>
+            <p class="text-gray-400 text-sm">
+              Check load times, large assets, slow API calls, excessive DOM nodes.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">visual-inventory</code>
+            <p class="text-gray-400 text-sm">
+              Screenshot every page at desktop, tablet, and mobile viewports.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">multi-actor-test</code>
+            <p class="text-gray-400 text-sm">
+              Coordinated multi-user test &mdash; buyer + seller + admin interacting together.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">webhook-test</code>
+            <p class="text-gray-400 text-sm">
+              Discover endpoints, fire synthetic events, verify UI/state, test idempotency.
+            </p>
+          </div>
+          <div class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <code class="text-orange-400 text-sm font-mono shrink-0">regression-run</code>
+            <p class="text-gray-400 text-sm">
+              Use session history to find gaps and regressions, then run targeted tests.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quickstart" class="py-20 px-6 border-t border-gray-800/50">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center mb-4">Get Started in 3 Steps</h2>
+        <p class="text-gray-400 text-center mb-12">
+          Works with any MCP client: Claude Desktop, Claude Code, Cursor, etc.
+        </p>
+
+        <div class="space-y-6">
+          <!-- Step 1 -->
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <span
+                class="w-7 h-7 rounded-full bg-orange-400 text-gray-950 text-sm font-bold flex items-center justify-center shrink-0"
+                >1</span
+              >
+              <h3 class="font-semibold">Install &amp; generate config</h3>
+            </div>
+            <div class="relative">
+              <pre
+                class="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto"
+              ><code id="code-install" class="text-sm font-mono text-gray-300">npm install -g f4tl
+cd your-project
+f4tl init</code></pre>
+              <button
+                data-copy="code-install"
+                class="absolute top-3 right-3 text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <span
+                class="w-7 h-7 rounded-full bg-orange-400 text-gray-950 text-sm font-bold flex items-center justify-center shrink-0"
+                >2</span
+              >
+              <h3 class="font-semibold">Start the MCP server</h3>
+            </div>
+            <div class="relative">
+              <pre
+                class="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto"
+              ><code id="code-serve" class="text-sm font-mono text-gray-300">f4tl serve</code></pre>
+              <button
+                data-copy="code-serve"
+                class="absolute top-3 right-3 text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <span
+                class="w-7 h-7 rounded-full bg-orange-400 text-gray-950 text-sm font-bold flex items-center justify-center shrink-0"
+                >3</span
+              >
+              <h3 class="font-semibold">Configure your MCP client</h3>
+            </div>
+            <div class="relative">
+              <pre
+                class="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto"
+              ><code id="code-config" class="text-sm font-mono text-gray-300">{
+  "mcpServers": {
+    "f4tl": {
+      "command": "f4tl",
+      "args": ["serve"],
+      "cwd": "/path/to/your/project"
+    }
+  }
+}</code></pre>
+              <button
+                data-copy="code-config"
+                class="absolute top-3 right-3 text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-10 text-center">
+          <p class="text-gray-500 text-sm mb-4">Or start with the live dashboard:</p>
+          <div class="relative inline-block">
+            <pre
+              class="bg-gray-900 border border-gray-800 rounded-lg px-6 py-3 inline-block"
+            ><code id="code-dashboard" class="text-sm font-mono text-orange-400">f4tl serve --dashboard</code></pre>
+            <button
+              data-copy="code-dashboard"
+              class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-10 px-6">
+      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span class="text-lg font-bold tracking-tight text-orange-400">f4tl</span>
+        <div class="flex items-center gap-6 text-sm text-gray-500">
+          <a
+            href="https://github.com/lhqezio/f4tl"
+            target="_blank"
+            rel="noopener"
+            class="hover:text-gray-300 transition-colors"
+            >GitHub</a
+          >
+          <a
+            href="https://www.npmjs.com/package/f4tl"
+            target="_blank"
+            rel="noopener"
+            class="hover:text-gray-300 transition-colors"
+            >npm</a
+          >
+          <span>MIT License</span>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
