@@ -147,6 +147,61 @@ describe('session flow', () => {
     await sm.endSession();
   });
 
+  it('multi-context session persists contextId to disk', async () => {
+    const sm = new SessionManager({
+      outputDir: tempDir,
+      maxSteps: 100,
+      keepArtifacts: true,
+    });
+
+    const config = makeConfig(tempDir);
+    const sessionId = sm.startSession(config);
+
+    await sm.recordStep(
+      makeAction('navigate', { url: '/' }),
+      TINY_PNG_BASE64,
+      makeMetadata(),
+      100,
+      undefined,
+      'buyer',
+    );
+    await sm.recordStep(
+      makeAction('click', { selector: '#accept' }),
+      TINY_PNG_BASE64,
+      makeMetadata(),
+      80,
+      undefined,
+      'seller',
+    );
+    await sm.recordStep(
+      makeAction('click', { selector: '#pay' }),
+      TINY_PNG_BASE64,
+      makeMetadata(),
+      90,
+      undefined,
+      'buyer',
+    );
+
+    const session = await sm.endSession();
+    expect(session.contexts).toEqual(expect.arrayContaining(['buyer', 'seller']));
+    expect(session.contexts).toHaveLength(2);
+    expect(session.steps[0].contextId).toBe('buyer');
+    expect(session.steps[1].contextId).toBe('seller');
+    expect(session.steps[2].contextId).toBe('buyer');
+
+    // Verify session.json on disk includes contexts
+    const sessionJsonPath = join(tempDir, sessionId, 'session.json');
+    const raw = await readFile(sessionJsonPath, 'utf-8');
+    const onDisk = JSON.parse(raw);
+    expect(onDisk.contexts).toEqual(expect.arrayContaining(['buyer', 'seller']));
+
+    // Verify step artifact JSON includes contextId
+    const stepJsonPath = join(tempDir, sessionId, `${session.steps[0].id}.json`);
+    const stepRaw = await readFile(stepJsonPath, 'utf-8');
+    const stepOnDisk = JSON.parse(stepRaw);
+    expect(stepOnDisk.contextId).toBe('buyer');
+  });
+
   it('records multiple steps and endSession returns all of them', async () => {
     const sm = new SessionManager({
       outputDir: tempDir,

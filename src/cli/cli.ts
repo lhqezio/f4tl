@@ -33,11 +33,15 @@ const serveCommand = defineCommand({
 
     if (args.dashboard) {
       const { DashboardServer } = await import('../dashboard/server.js');
+      const { SessionHistory } = await import('../core/session-history.js');
+      const sessionHistory =
+        config.learning?.enabled !== false ? new SessionHistory(config.session.outputDir) : null;
       const dashboard = new DashboardServer(
         config.dashboard,
         config.session,
         server.getSessionManager(),
         server.getReportManager(),
+        sessionHistory,
       );
       await dashboard.start();
     }
@@ -455,7 +459,16 @@ const dashboardCommand = defineCommand({
     const config = await loadF4tlConfig(overrides as never);
 
     // Standalone mode — no MCP session manager, just browse historical data
-    const dashboard = new DashboardServer(config.dashboard, config.session, null, null);
+    const { SessionHistory } = await import('../core/session-history.js');
+    const sessionHistory =
+      config.learning?.enabled !== false ? new SessionHistory(config.session.outputDir) : null;
+    const dashboard = new DashboardServer(
+      config.dashboard,
+      config.session,
+      null,
+      null,
+      sessionHistory,
+    );
     await dashboard.start();
 
     console.error('[f4tl] Dashboard running in standalone mode (historical sessions only)');

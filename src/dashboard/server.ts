@@ -6,7 +6,9 @@ import { join } from 'node:path';
 import type { ServerType } from '@hono/node-server';
 import type { SessionManager } from '../core/session-manager.js';
 import type { ReportManager } from '../core/report-manager.js';
+import type { SessionHistory } from '../core/session-history.js';
 import type {
+  BugSeverity,
   DashboardConfig,
   SessionConfig,
   SessionEvent,
@@ -28,6 +30,7 @@ export class DashboardServer {
     private sessionConfig: SessionConfig,
     private sessionManager: SessionManager | null = null,
     private reportManager: ReportManager | null = null,
+    private sessionHistory: SessionHistory | null = null,
   ) {
     this.app = new Hono();
     const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({
@@ -175,6 +178,66 @@ export class DashboardServer {
         findings: this.reportManager?.getFindings() ?? [],
         summary,
       });
+    });
+
+    // History endpoints (powered by SessionHistory)
+    api.get('/history', async (c) => {
+      if (!this.sessionHistory) {
+        return c.json({ error: 'Learning not enabled' }, 404);
+      }
+      const limit = Number(c.req.query('limit') ?? 20);
+      const since = c.req.query('since') ? Number(c.req.query('since')) : undefined;
+      const groupBy = c.req.query('groupBy') as 'url' | 'actionType' | 'context' | undefined;
+      const entries = await this.sessionHistory.getHistory({ limit, since });
+
+      if (groupBy) {
+        const grouped: Record<string, { sessions: number; totalSteps: number; totalBugs: number }> =
+          {};
+        for (const entry of entries) {
+          let keys: string[];
+          if (groupBy === 'url') keys = entry.urlsCovered;
+          else if (groupBy === 'actionType') keys = Object.keys(entry.actionTypes);
+          else keys = entry.contexts ?? ['default'];
+
+          for (const key of keys) {
+            if (!grouped[key]) grouped[key] = { sessions: 0, totalSteps: 0, totalBugs: 0 };
+            grouped[key].sessions++;
+            grouped[key].totalSteps += entry.stepCount;
+            grouped[key].totalBugs += entry.bugCount;
+          }
+        }
+        return c.json(grouped);
+      }
+
+      return c.json(entries);
+    });
+
+    api.get('/history/bugs', async (c) => {
+      if (!this.sessionHistory) {
+        return c.json({ error: 'Learning not enabled' }, 404);
+      }
+      const severity = c.req.query('severity') as BugSeverity | undefined;
+      const url = c.req.query('url');
+      const limit = Number(c.req.query('limit') ?? 50);
+      const entries = await this.sessionHistory.getBugLedger({ severity, url, limit });
+      return c.json(entries);
+    });
+
+    api.get('/history/compare', async (c) => {
+      if (!this.sessionHistory) {
+        return c.json({ error: 'Learning not enabled' }, 404);
+      }
+      const a = c.req.query('a');
+      const b = c.req.query('b');
+      if (!a || !b) {
+        return c.json({ error: 'Both "a" and "b" query params required' }, 400);
+      }
+      try {
+        const comparison = await this.sessionHistory.compare(a, b);
+        return c.json(comparison);
+      } catch (err) {
+        return c.json({ error: (err as Error).message }, 404);
+      }
     });
 
     this.app.route('/api', api);

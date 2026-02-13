@@ -105,6 +105,14 @@ export class ReportManager {
       findingsByCategory[finding.category]++;
     }
 
+    const stepsByContext: Record<string, number> = {};
+    for (const step of session.steps) {
+      if (step.contextId) {
+        stepsByContext[step.contextId] = (stepsByContext[step.contextId] ?? 0) + 1;
+      }
+    }
+    const hasContexts = Object.keys(stepsByContext).length > 0;
+
     return {
       sessionId: session.id,
       startTime: session.startTime,
@@ -116,6 +124,7 @@ export class ReportManager {
       bugsBySeverity,
       findingsByCategory,
       errorStepCount: session.steps.filter((s) => s.error).length,
+      ...(hasContexts ? { contexts: session.contexts, stepsByContext } : {}),
     };
   }
 

@@ -92,6 +92,15 @@ export const dashboardConfigSchema = z.object({
   host: z.string().default('localhost'),
 });
 
+export const webhookConfigSchema = z.object({
+  signingSecrets: z.record(z.string(), z.string()).optional(),
+  baseUrl: z.string().default('http://localhost:3000'),
+});
+
+export const learningConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+});
+
 export const configSchema = z.object({
   browser: browserConfigSchema.default({}),
   session: sessionConfigSchema.default({}),
@@ -103,6 +112,8 @@ export const configSchema = z.object({
   codebase: codebaseConfigSchema.default({}),
   report: reportConfigSchema.default({}),
   dashboard: dashboardConfigSchema.default({}),
+  webhooks: webhookConfigSchema.optional(),
+  learning: learningConfigSchema.optional(),
 });
 
 export type ValidatedConfig = z.infer<typeof configSchema>;

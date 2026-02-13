@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import SessionList from './pages/SessionList';
 import SessionDetail from './pages/SessionDetail';
 import LiveView from './pages/LiveView';
+import HistoryView from './pages/HistoryView';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
           <Route path="/" element={<SessionList />} />
           <Route path="/session/:id" element={<SessionDetail />} />
           <Route path="/live" element={<LiveView />} />
+          <Route path="/history" element={<HistoryView />} />
         </Route>
       </Routes>
     </BrowserRouter>

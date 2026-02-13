@@ -19,6 +19,10 @@ export const createBugSchema = z.object({
     .default([])
     .describe('Step IDs with screenshots as evidence'),
   url: z.string().optional().describe('URL where the bug was found'),
+  contextId: z
+    .string()
+    .optional()
+    .describe('Browser context that found this bug (e.g. "buyer", "admin")'),
 });
 
 export const addFindingSchema = z.object({
@@ -29,6 +33,7 @@ export const addFindingSchema = z.object({
   description: z.string().describe('Detailed description'),
   evidenceStepIds: z.array(z.string()).default([]).describe('Step IDs as evidence'),
   url: z.string().optional().describe('Relevant URL'),
+  contextId: z.string().optional().describe('Browser context related to this finding'),
 });
 
 export const generateReportSchema = z.object({

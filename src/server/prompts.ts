@@ -569,4 +569,238 @@ export function registerPrompts(mcp: McpServer): void {
       ],
     }),
   );
+
+  // ── 8. multi-actor-test ───────────────────────────────────────────────────────
+
+  mcp.registerPrompt(
+    'multi-actor-test',
+    {
+      title: 'Multi-Actor Test',
+      description:
+        'Run a coordinated multi-user test scenario with isolated browser contexts per actor. Supports marketplace flows, collaboration, role-based access, and any scenario requiring multiple authenticated users.',
+      argsSchema: {
+        url: z.string().describe('The base URL of the application'),
+        scenario: z
+          .string()
+          .describe(
+            'Description of the multi-user scenario to test (e.g. "buyer creates order, seller fulfills it, buyer confirms delivery")',
+          ),
+        actors: z
+          .string()
+          .describe(
+            'Comma-separated list of actor names with optional auth roles, e.g. "buyer:buyer_role, seller:seller_role" or "alice, bob"',
+          ),
+      },
+    },
+    ({ url, scenario, actors }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: [
+              `Run a multi-actor test scenario on: ${url}`,
+              `Scenario: ${scenario}`,
+              `Actors: ${actors}`,
+              '',
+              '## Setup — Create Isolated Contexts',
+              '',
+              `For each actor in "${actors}" (comma-separated, format "name:auth_role" or just "name"):`,
+              '',
+              '1. Call browser_new_context with the actor name (e.g. name: "buyer").',
+              '2. If an auth role is specified after ":" (e.g. "buyer:buyer_role"), call browser_auth with that role to authenticate.',
+              `3. Call browser_navigate to ${url} and take a browser_screenshot to verify the initial state for this actor.`,
+              '',
+              '## Scenario Execution',
+              '',
+              `Now execute the scenario: "${scenario}"`,
+              '',
+              'Follow these rules:',
+              '',
+              '- **ALWAYS call browser_switch_context before acting as a different actor.** This is critical — each actor has its own isolated session with separate cookies and storage.',
+              "- After each significant action by one actor, switch to another actor's context and verify the effect is visible (e.g. after buyer creates a listing, switch to seller and check the listing appears).",
+              '- Take browser_screenshot after each significant action to record visual evidence.',
+              '- Check network_get_requests for failed API calls (statusMin: 400) after important operations.',
+              '- Break the scenario into clear steps, annotating which actor performs each action.',
+              '',
+              '## Cross-Actor Verification Patterns',
+              '',
+              '- **Data creation**: After Actor A creates/modifies data, switch to Actor B, navigate or refresh, and verify the data appears correctly.',
+              '- **Notifications**: After Actor A triggers a notification, switch to Actor B and verify they received it.',
+              '- **Concurrency**: Test what happens when Actor A starts a process and Actor B tries the same resource (e.g. both try to claim the same item).',
+              "- **Permissions**: Test that Actor A cannot access Actor B's private resources.",
+              '- **State transitions**: After Actor A changes state (e.g. accepts an offer), verify Actor B sees the updated state.',
+              '',
+              '## Bug Filing',
+              '',
+              'When you find issues, use report_create_bug with:',
+              '- severity: "critical" for broken flows or data inconsistencies between actors, "major" for UI bugs or missing updates, "minor" for cosmetic or timing issues',
+              '- **contextId**: Set to the actor name who experienced the issue (e.g. "buyer", "seller")',
+              '- stepsToReproduce: Include which actor performed each step',
+              '- evidenceStepIds: Reference the step IDs with screenshots',
+              '',
+              'Use report_add_finding with contextId for actor-specific observations (e.g. "seller\'s dashboard loads slowly after buyer places order").',
+              '',
+              '## Report',
+              '',
+              '1. Call report_get_session_summary to review multi-actor coverage.',
+              '2. Call report_generate with format "html" for the final report with embedded screenshots.',
+            ].join('\n'),
+          },
+        },
+      ],
+    }),
+  );
+
+  // ── 9. webhook-test ─────────────────────────────────────────────────────────
+
+  mcp.registerPrompt(
+    'webhook-test',
+    {
+      title: 'Webhook Test',
+      description:
+        'Discover webhook endpoints from source code, fire synthetic events with proper signing, and verify UI/state changes. Tests idempotency, error paths, and missing handlers.',
+      argsSchema: {
+        url: z.string().describe('The base URL of the application'),
+        scenario: z
+          .string()
+          .optional()
+          .describe(
+            'Specific scenario to test (e.g. "payment flow", "dispute handling"). If omitted, tests all discovered webhooks.',
+          ),
+      },
+    },
+    ({ url, scenario }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: [
+              `Test webhook handling for the application at: ${url}`,
+              scenario ? `Focus on: ${scenario}` : '',
+              '',
+              '## Phase 1: Discovery',
+              '',
+              '1. Call webhook_discover to map all webhook endpoints in the codebase.',
+              '2. Review the discovery results: endpoints, event types, required fields, state transitions.',
+              '3. If no webhooks are found, report this as a finding and end.',
+              '4. Note any unhandled events (events in the SDK but with no handler) — these are potential gaps.',
+              '',
+              '## Phase 2: Setup',
+              '',
+              `1. Use browser_navigate to go to ${url}.`,
+              '2. Create the necessary application state for webhook testing:',
+              '   - Create a record/entity via the UI (e.g. place an order, create a transaction)',
+              '   - Note down any IDs needed for webhook payloads (inspect the page or network requests)',
+              '3. Take a browser_screenshot to capture the "before" state.',
+              '',
+              '## Phase 3: Webhook Firing',
+              '',
+              'For each discovered event type:',
+              '',
+              '1. Construct a payload using the discovered required fields.',
+              '2. Call webhook_fire with:',
+              '   - url: the discovered endpoint route',
+              '   - payload: the constructed payload with real IDs from your setup',
+              '   - signing: the provider name if signing was detected (e.g. "stripe")',
+              '   - verifyUi: a selector and expected text to verify the UI updated',
+              '3. Check the response status — file a bug if non-2xx.',
+              '4. Take a browser_screenshot after each webhook to capture state changes.',
+              '',
+              '## Phase 4: Idempotency & Edge Cases',
+              '',
+              '1. **Idempotency test**: Fire the same webhook event twice with identical payload.',
+              '   - The second call should NOT cause duplicate processing.',
+              '   - Verify the UI state is unchanged after the duplicate.',
+              '   - File a bug if the app processes the event twice.',
+              '',
+              '2. **Error path test**: Fire failure events (e.g. payment_failed after payment_succeeded).',
+              '   - Verify the state transitions correctly to an error state.',
+              '',
+              '3. **Missing handler test**: If unhandled events were discovered, fire one.',
+              '   - The app should respond gracefully (200 or 4xx), not crash (5xx).',
+              '',
+              '## Phase 5: Reporting',
+              '',
+              '1. File bugs with report_create_bug for any failures (non-2xx responses, missing UI updates, idempotency failures, crashes).',
+              '2. File findings with report_add_finding for observations (slow webhook processing, missing error handling, gaps in event coverage).',
+              '3. Call report_generate with format "html" for the final report.',
+            ].join('\n'),
+          },
+        },
+      ],
+    }),
+  );
+
+  // ── 10. regression-run ──────────────────────────────────────────────────────
+
+  mcp.registerPrompt(
+    'regression-run',
+    {
+      title: 'Regression Run',
+      description:
+        'Analyze past session history to identify coverage gaps and previously buggy areas, then run targeted regression tests. Compares results against a baseline session.',
+      argsSchema: {
+        url: z.string().describe('The base URL of the application'),
+        baseline_session_id: z
+          .string()
+          .optional()
+          .describe('Session ID to compare against. If omitted, uses the most recent session.'),
+      },
+    },
+    ({ url, baseline_session_id }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: [
+              `Run a regression test on: ${url}`,
+              baseline_session_id ? `Compare against baseline session: ${baseline_session_id}` : '',
+              '',
+              '## Phase 1: History Analysis',
+              '',
+              '1. Call session_get_history to see all past test runs.',
+              '2. Call session_get_bugs to get the full bug ledger.',
+              '3. Identify:',
+              '   - **Recurring bugs**: bugs with the same fingerprint across multiple sessions (likely regressions)',
+              '   - **Most-buggy URLs**: pages where bugs concentrate',
+              '   - **Under-tested URLs**: pages with few or no test sessions',
+              '   - **Untested action types**: interactions that have never been exercised',
+              '',
+              '## Phase 2: Baseline Comparison',
+              '',
+              baseline_session_id
+                ? `1. Call session_compare with sessionA="${baseline_session_id}" and sessionB as the most recent session.`
+                : '1. Call session_compare with the two most recent sessions.',
+              '2. Review the comparison:',
+              '   - **Only in A**: URLs and actions that were tested before but not recently — potential coverage regression',
+              '   - **Only in B**: New coverage areas',
+              '   - **Bug diff**: New bugs, fixed bugs, persistent bugs',
+              '',
+              '## Phase 3: Targeted Testing',
+              '',
+              `1. Use browser_navigate to go to ${url}.`,
+              '2. Prioritize testing in this order:',
+              '   a. **Previously buggy areas**: Re-test URLs and flows where bugs were found before. Verify if they are fixed.',
+              '   b. **Coverage gaps**: Test URLs and action types that were in the baseline but missing from recent sessions.',
+              '   c. **Under-tested pages**: Exercise pages that have the fewest historical test sessions.',
+              '3. For each area tested:',
+              '   - Take browser_screenshot before and after actions.',
+              '   - Check for console errors and network failures.',
+              '   - If a previously-known bug is still present, file it with severity noting "regression".',
+              '   - If a previously-known bug is fixed, file a finding with category "observation" noting the fix.',
+              '',
+              '## Phase 4: Reporting',
+              '',
+              '1. Call report_get_session_summary to review overall coverage.',
+              '2. File all bugs and findings.',
+              '3. Call report_generate with format "html" for the final regression report.',
+            ].join('\n'),
+          },
+        },
+      ],
+    }),
+  );
 }

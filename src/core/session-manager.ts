@@ -16,6 +16,7 @@ import type {
 export class SessionManager {
   private session: Session | null = null;
   private emitter = new EventEmitter();
+  private contextsSeen = new Set<string>();
 
   constructor(private config: SessionConfig) {}
 
@@ -40,6 +41,7 @@ export class SessionManager {
 
   startSession(fullConfig: F4tlConfig): string {
     const id = nanoid(12);
+    this.contextsSeen.clear();
     this.session = {
       id,
       startTime: Date.now(),
@@ -57,6 +59,7 @@ export class SessionManager {
     metadata: StepMetadata,
     duration: number,
     error?: string,
+    contextId?: string,
   ): Promise<SessionStep> {
     if (!this.session) {
       throw new Error('No active session. Call startSession() first.');
@@ -65,8 +68,13 @@ export class SessionManager {
       throw new Error(`Session step limit reached (${this.config.maxSteps})`);
     }
 
+    if (contextId) {
+      this.contextsSeen.add(contextId);
+    }
+
     const step: SessionStep = {
       id: nanoid(10),
+      ...(contextId ? { contextId } : {}),
       action,
       screenshot,
       metadata,
@@ -110,6 +118,7 @@ export class SessionManager {
       JSON.stringify(
         {
           id: step.id,
+          ...(step.contextId ? { contextId: step.contextId } : {}),
           action: step.action,
           metadata: step.metadata,
           duration: step.duration,
@@ -125,6 +134,10 @@ export class SessionManager {
     if (!this.session) throw new Error('No active session');
 
     this.session.endTime = Date.now();
+
+    if (this.contextsSeen.size > 0) {
+      this.session.contexts = [...this.contextsSeen];
+    }
 
     this.emit('session:end', {
       sessionId: this.session.id,

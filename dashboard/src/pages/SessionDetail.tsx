@@ -40,6 +40,9 @@ export default function SessionDetail() {
             highlight={session.summary.bugCount > 0}
           />
           <Stat label="Findings" value={session.summary.findingCount} />
+          {session.summary.contexts && session.summary.contexts.length > 1 && (
+            <Stat label="Actors" value={session.summary.contexts.length} />
+          )}
         </div>
       )}
 

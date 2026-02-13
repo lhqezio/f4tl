@@ -15,6 +15,14 @@ const SEVERITY_COLORS: Record<string, string> = {
   cosmetic: '#6b7280',
 };
 
+const CONTEXT_COLORS = ['#0d9488', '#7c3aed', '#d97706', '#e11d48', '#0284c7', '#65a30d'];
+
+function contextColor(name: string): string {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+  return CONTEXT_COLORS[Math.abs(hash) % CONTEXT_COLORS.length];
+}
+
 export async function generate(
   data: ReportData,
   screenshotResolver: (stepId: string) => Promise<string | null>,
@@ -52,6 +60,7 @@ export async function generate(
       <div class="bug-card">
         <div class="bug-header">
           <span class="severity" style="background:${color}">${bug.severity.toUpperCase()}</span>
+          ${bug.contextId ? `<span class="context-badge" style="background:${contextColor(bug.contextId)}">${escapeHtml(bug.contextId)}</span>` : ''}
           <h3>${escapeHtml(bug.title)}</h3>
         </div>
         ${bug.url ? `<p class="url">${escapeHtml(bug.url)}</p>` : ''}
@@ -89,6 +98,7 @@ export async function generate(
       <div class="finding-card">
         <div class="finding-header">
           <span class="category">${f.category.toUpperCase()}</span>
+          ${f.contextId ? `<span class="context-badge" style="background:${contextColor(f.contextId)}">${escapeHtml(f.contextId)}</span>` : ''}
           <h3>${escapeHtml(f.title)}</h3>
         </div>
         ${f.url ? `<p class="url">${escapeHtml(f.url)}</p>` : ''}
@@ -98,11 +108,17 @@ export async function generate(
     })
     .join('');
 
+  const hasContexts = session.steps.some((s) => s.contextId);
+
   const timelineRows = session.steps
     .map((step, i) => {
       const err = step.error ? `<span class="error-badge">Error</span>` : '';
+      const ctxCell = hasContexts
+        ? `<td><span class="context-badge" style="background:${contextColor(step.contextId ?? 'default')}">${escapeHtml(step.contextId ?? 'default')}</span></td>`
+        : '';
       return `<tr>
         <td>${i + 1}</td>
+        ${ctxCell}
         <td><code>${step.action.type}</code></td>
         <td class="url-cell">${escapeHtml(step.metadata.url)}</td>
         <td>${step.duration}ms</td>
@@ -147,6 +163,7 @@ export async function generate(
     ol { padding-left: 1.25rem; }
     li { margin-bottom: 0.25rem; }
     .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .context-badge { color: #fff; font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 3px; font-family: monospace; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -159,6 +176,7 @@ export async function generate(
     <div class="stat"><div class="value">${summary.bugCount}</div><div class="label">Bugs</div></div>
     <div class="stat"><div class="value">${summary.findingCount}</div><div class="label">Findings</div></div>
     <div class="stat"><div class="value">${summary.errorStepCount}</div><div class="label">Errors</div></div>
+    ${summary.contexts && summary.contexts.length > 1 ? `<div class="stat"><div class="value">${summary.contexts.length}</div><div class="label">Actors</div></div>` : ''}
   </div>
 
   ${bugs.length > 0 ? `<h2>Bugs</h2>${bugsHtml}` : ''}
@@ -168,7 +186,7 @@ export async function generate(
       ? `
   <h2>Timeline</h2>
   <table>
-    <thead><tr><th>#</th><th>Action</th><th>URL</th><th>Duration</th><th>Status</th></tr></thead>
+    <thead><tr><th>#</th>${hasContexts ? '<th>Context</th>' : ''}<th>Action</th><th>URL</th><th>Duration</th><th>Status</th></tr></thead>
     <tbody>${timelineRows}</tbody>
   </table>`
       : ''

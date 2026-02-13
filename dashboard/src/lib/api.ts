@@ -13,6 +13,7 @@ export interface SessionListItem {
 
 export interface SessionStep {
   id: string;
+  contextId?: string;
   action: { type: string; [key: string]: unknown };
   metadata: { url: string; consoleErrors: string[]; networkErrors: string[] };
   duration: number;
@@ -21,6 +22,7 @@ export interface SessionStep {
 
 export interface Bug {
   id: string;
+  contextId?: string;
   title: string;
   severity: 'critical' | 'major' | 'minor' | 'cosmetic';
   stepsToReproduce: string[];
@@ -34,6 +36,7 @@ export interface Bug {
 
 export interface Finding {
   id: string;
+  contextId?: string;
   title: string;
   category: string;
   description: string;
@@ -53,6 +56,8 @@ export interface SessionSummary {
   bugsBySeverity: Record<string, number>;
   findingsByCategory: Record<string, number>;
   errorStepCount: number;
+  contexts?: string[];
+  stepsByContext?: Record<string, number>;
 }
 
 export interface SessionDetail {
@@ -92,4 +97,78 @@ export async function fetchLiveSession(): Promise<LiveSessionData> {
 
 export function screenshotUrl(sessionId: string, stepId: string): string {
   return `${BASE}/sessions/${sessionId}/steps/${stepId}/screenshot`;
+}
+
+// ── History / Learning Types ─────────────────────────────────────────────────
+
+export interface SessionHistoryEntry {
+  sessionId: string;
+  startTime: number;
+  endTime?: number;
+  duration: number;
+  stepCount: number;
+  bugCount: number;
+  findingCount: number;
+  errorCount: number;
+  urlsCovered: string[];
+  actionTypes: Record<string, number>;
+  contexts?: string[];
+}
+
+export interface BugLedgerEntry {
+  bugId: string;
+  sessionId: string;
+  title: string;
+  severity: 'critical' | 'major' | 'minor' | 'cosmetic';
+  url?: string;
+  timestamp: number;
+  contextId?: string;
+  fingerprint: string;
+}
+
+export interface SessionComparison {
+  sessionA: string;
+  sessionB: string;
+  onlyInA: { urls: string[]; actionTypes: string[] };
+  onlyInB: { urls: string[]; actionTypes: string[] };
+  common: { urls: string[]; actionTypes: string[] };
+  bugDiff: { newInB: string[]; fixedInB: string[]; persistent: string[] };
+}
+
+export async function fetchHistory(opts?: {
+  limit?: number;
+  since?: number;
+  groupBy?: string;
+}): Promise<SessionHistoryEntry[]> {
+  const params = new URLSearchParams();
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  if (opts?.since) params.set('since', String(opts.since));
+  if (opts?.groupBy) params.set('groupBy', opts.groupBy);
+  const qs = params.toString();
+  const res = await fetch(`${BASE}/history${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error('Failed to fetch history');
+  return res.json();
+}
+
+export async function fetchBugLedger(opts?: {
+  severity?: string;
+  url?: string;
+  limit?: number;
+}): Promise<BugLedgerEntry[]> {
+  const params = new URLSearchParams();
+  if (opts?.severity) params.set('severity', opts.severity);
+  if (opts?.url) params.set('url', opts.url);
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  const res = await fetch(`${BASE}/history/bugs${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error('Failed to fetch bug ledger');
+  return res.json();
+}
+
+export async function fetchComparison(a: string, b: string): Promise<SessionComparison> {
+  const res = await fetch(
+    `${BASE}/history/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`,
+  );
+  if (!res.ok) throw new Error('Failed to fetch comparison');
+  return res.json();
 }

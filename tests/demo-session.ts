@@ -111,7 +111,8 @@ async function main() {
   await doStep('navigate');
 
   // 5. Record bugs and findings
-  const sess = sessionManager.getSession()!;
+  const sess = sessionManager.getSession();
+  if (!sess) throw new Error('No active session');
 
   reportManager.createBug({
     title: 'Form accepts empty submission when name and email are blank',

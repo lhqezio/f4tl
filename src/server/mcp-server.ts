@@ -44,6 +44,10 @@ import {
   generateReportSchema,
 } from './tools/report.js';
 import { ReportManager } from '../core/report-manager.js';
+import { WebhookHandler } from '../core/webhook-handler.js';
+import { SessionHistory } from '../core/session-history.js';
+import { WebhookTools, discoverSchema, fireSchema } from './tools/webhook.js';
+import { LearningTools, getHistorySchema, getBugsSchema, compareSchema } from './tools/learning.js';
 import { registerPrompts } from './prompts.js';
 import type { F4tlConfig } from '../types/index.js';
 
@@ -61,6 +65,8 @@ export class F4tlServer {
   private codeTools: CodeTools;
   private reportManager: ReportManager;
   private reportTools: ReportTools;
+  private webhookTools: WebhookTools | null = null;
+  private learningTools: LearningTools | null = null;
 
   constructor(private config: F4tlConfig) {
     this.mcp = new McpServer(
@@ -93,6 +99,18 @@ export class F4tlServer {
       this.dbTools = new DatabaseTools(this.dbConnector);
     }
 
+    // Conditional: webhooks
+    if (config.webhooks) {
+      const handler = new WebhookHandler(this.codeExplorer, config.webhooks);
+      this.webhookTools = new WebhookTools(handler, this.browserManager);
+    }
+
+    // Conditional: learning (enabled by default when not explicitly disabled)
+    if (config.learning?.enabled !== false) {
+      const history = new SessionHistory(config.session.outputDir);
+      this.learningTools = new LearningTools(history);
+    }
+
     this.registerBrowserTools();
     this.registerNetworkTools();
     this.registerCodeTools();
@@ -101,6 +119,8 @@ export class F4tlServer {
 
     if (this.logTools) this.registerLogTools();
     if (this.dbTools) this.registerDatabaseTools();
+    if (this.webhookTools) this.registerWebhookTools();
+    if (this.learningTools) this.registerLearningTools();
 
     registerPrompts(this.mcp);
 
@@ -458,6 +478,55 @@ export class F4tlServer {
     );
   }
 
+  // ── Webhook Tools (2) ─────────────────────────────────────────────────────
+
+  private registerWebhookTools(): void {
+    const t = this.webhookTools;
+    if (!t) return;
+
+    this.mcp.tool(
+      'webhook_discover',
+      'Discover webhook endpoints, event types, required fields, and state transitions from source code.',
+      discoverSchema.shape,
+      (params) => t.discover(discoverSchema.parse(params)),
+    );
+
+    this.mcp.tool(
+      'webhook_fire',
+      'Fire a synthetic webhook POST with optional signing and UI verification.',
+      fireSchema.shape,
+      (params) => t.fire(fireSchema.parse(params)),
+    );
+  }
+
+  // ── Learning Tools (3) ───────────────────────────────────────────────────
+
+  private registerLearningTools(): void {
+    const t = this.learningTools;
+    if (!t) return;
+
+    this.mcp.tool(
+      'session_get_history',
+      'Get past session history with coverage stats, bug counts, and URL coverage.',
+      getHistorySchema.shape,
+      (params) => t.getHistory(getHistorySchema.parse(params)),
+    );
+
+    this.mcp.tool(
+      'session_get_bugs',
+      'Get bug ledger across all sessions with recurrence tracking.',
+      getBugsSchema.shape,
+      (params) => t.getBugs(getBugsSchema.parse(params)),
+    );
+
+    this.mcp.tool(
+      'session_compare',
+      'Compare two sessions: coverage gaps, new/fixed/persistent bugs.',
+      compareSchema.shape,
+      (params) => t.compare(compareSchema.parse(params)),
+    );
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   private setupShutdown(): void {
@@ -521,9 +590,11 @@ export class F4tlServer {
       4 + // report
       (this.config.auth && Object.keys(this.config.auth).length > 0 ? 1 : 0) + // auth
       (this.logTools ? 3 : 0) + // logs
-      (this.dbTools ? 3 : 0); // db
+      (this.dbTools ? 3 : 0) + // db
+      (this.webhookTools ? 2 : 0) + // webhook
+      (this.learningTools ? 3 : 0); // learning
 
-    console.error(`[f4tl] MCP server ready (${toolCount} tools, 7 prompts registered)`);
+    console.error(`[f4tl] MCP server ready (${toolCount} tools, 10 prompts registered)`);
   }
 
   getSessionManager(): SessionManager {

@@ -147,6 +147,39 @@ describe('markdown generator', () => {
     expect(md).toContain('| # | Action | URL | Duration | Error |');
   });
 
+  it('includes Context column for multi-context sessions', async () => {
+    const data = buildReportData();
+    data.session.steps[0].contextId = 'buyer';
+    data.session.steps[1].contextId = 'seller';
+    data.session.contexts = ['buyer', 'seller'];
+    data.summary.contexts = ['buyer', 'seller'];
+    const md = await genMarkdown(data, screenshotResolver);
+    expect(md).toContain('| # | Context | Action | URL | Duration | Error |');
+    expect(md).toContain('| 1 | buyer |');
+    expect(md).toContain('| 2 | seller |');
+  });
+
+  it('omits Context column for single-context sessions', async () => {
+    const md = await genMarkdown(buildReportData(), screenshotResolver);
+    expect(md).not.toContain('Context');
+  });
+
+  it('shows contextId tag on bug and finding headers', async () => {
+    const data = buildReportData();
+    data.bugs[0].contextId = 'buyer';
+    data.findings[0].contextId = 'seller';
+    const md = await genMarkdown(data, screenshotResolver);
+    expect(md).toContain('[CRITICAL] [buyer]');
+    expect(md).toContain('[ACCESSIBILITY] [seller]');
+  });
+
+  it('shows Actors line when multiple contexts exist', async () => {
+    const data = buildReportData();
+    data.summary.contexts = ['buyer', 'seller'];
+    const md = await genMarkdown(data, screenshotResolver);
+    expect(md).toContain('**Actors**: buyer, seller (2 contexts)');
+  });
+
   it('omits Bugs section when bugs array is empty', async () => {
     const data = buildReportData();
     data.bugs = [];
@@ -211,5 +244,29 @@ describe('html generator', () => {
     const html = await genHtml(data, screenshotResolver);
     expect(html).toContain('&lt;script&gt;');
     expect(html).not.toContain('<script>alert');
+  });
+
+  it('renders context badges and column for multi-context sessions', async () => {
+    const data = buildReportData();
+    data.session.steps[0].contextId = 'buyer';
+    data.session.steps[1].contextId = 'seller';
+    data.session.contexts = ['buyer', 'seller'];
+    data.summary.contexts = ['buyer', 'seller'];
+    data.bugs[0].contextId = 'buyer';
+    data.findings[0].contextId = 'seller';
+    const html = await genHtml(data, screenshotResolver);
+    // Context column header
+    expect(html).toContain('<th>Context</th>');
+    // Context badges in timeline
+    expect(html).toContain('context-badge');
+    expect(html).toContain('buyer');
+    expect(html).toContain('seller');
+    // Actors stat card
+    expect(html).toContain('Actors');
+  });
+
+  it('omits Context column for single-context sessions', async () => {
+    const html = await genHtml(buildReportData(), screenshotResolver);
+    expect(html).not.toContain('<th>Context</th>');
   });
 });

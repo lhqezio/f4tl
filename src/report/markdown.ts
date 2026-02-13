@@ -17,13 +17,17 @@ export async function generate(
   );
   lines.push(`**Findings**: ${summary.findingCount}`);
   lines.push(`**Errors**: ${summary.errorStepCount} step(s) with errors`);
+  if (summary.contexts && summary.contexts.length > 1) {
+    lines.push(`**Actors**: ${summary.contexts.join(', ')} (${summary.contexts.length} contexts)`);
+  }
   lines.push('');
 
   if (bugs.length > 0) {
     lines.push('## Bugs');
     lines.push('');
     for (const bug of bugs) {
-      lines.push(`### [${bug.severity.toUpperCase()}] ${bug.title}`);
+      const ctxTag = bug.contextId ? ` [${bug.contextId}]` : '';
+      lines.push(`### [${bug.severity.toUpperCase()}]${ctxTag} ${bug.title}`);
       lines.push('');
       if (bug.url) lines.push(`**URL**: ${bug.url}`);
       lines.push('');
@@ -53,7 +57,8 @@ export async function generate(
     lines.push('## Findings');
     lines.push('');
     for (const f of findings) {
-      lines.push(`### [${f.category.toUpperCase()}] ${f.title}`);
+      const ctxTag = f.contextId ? ` [${f.contextId}]` : '';
+      lines.push(`### [${f.category.toUpperCase()}]${ctxTag} ${f.title}`);
       lines.push('');
       lines.push(f.description);
       if (f.url) {
@@ -67,15 +72,28 @@ export async function generate(
   }
 
   if (session.steps.length > 0) {
+    const hasContexts = session.steps.some((s) => s.contextId);
     lines.push('## Timeline');
     lines.push('');
-    lines.push('| # | Action | URL | Duration | Error |');
-    lines.push('|---|--------|-----|----------|-------|');
+    if (hasContexts) {
+      lines.push('| # | Context | Action | URL | Duration | Error |');
+      lines.push('|---|---------|--------|-----|----------|-------|');
+    } else {
+      lines.push('| # | Action | URL | Duration | Error |');
+      lines.push('|---|--------|-----|----------|-------|');
+    }
     for (const [i, step] of session.steps.entries()) {
       const err = step.error ? `Yes: ${step.error.slice(0, 50)}` : '';
       const url =
         step.metadata.url.length > 60 ? step.metadata.url.slice(0, 57) + '...' : step.metadata.url;
-      lines.push(`| ${i + 1} | ${step.action.type} | ${url} | ${step.duration}ms | ${err} |`);
+      if (hasContexts) {
+        const ctx = step.contextId ?? 'default';
+        lines.push(
+          `| ${i + 1} | ${ctx} | ${step.action.type} | ${url} | ${step.duration}ms | ${err} |`,
+        );
+      } else {
+        lines.push(`| ${i + 1} | ${step.action.type} | ${url} | ${step.duration}ms | ${err} |`);
+      }
     }
   }
 

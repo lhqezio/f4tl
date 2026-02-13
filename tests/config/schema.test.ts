@@ -8,6 +8,8 @@ import {
   codebaseConfigSchema,
   reportConfigSchema,
   dashboardConfigSchema,
+  webhookConfigSchema,
+  learningConfigSchema,
 } from '../../src/config/schema.js';
 
 describe('configSchema', () => {
@@ -164,5 +166,41 @@ describe('codebaseConfigSchema', () => {
     expect(result.excludePatterns).toContain('node_modules');
     expect(result.excludePatterns).toContain('.git');
     expect(result.excludePatterns).toContain('dist');
+  });
+});
+
+describe('webhookConfigSchema', () => {
+  it('defaults baseUrl to localhost:3000', () => {
+    const result = webhookConfigSchema.parse({});
+    expect(result.baseUrl).toBe('http://localhost:3000');
+  });
+
+  it('accepts custom baseUrl', () => {
+    const result = webhookConfigSchema.parse({ baseUrl: 'http://app:8080' });
+    expect(result.baseUrl).toBe('http://app:8080');
+  });
+
+  it('accepts signingSecrets', () => {
+    const result = webhookConfigSchema.parse({
+      signingSecrets: { stripe: 'whsec_xxx', github: 'ghsec_yyy' },
+    });
+    expect(result.signingSecrets?.stripe).toBe('whsec_xxx');
+  });
+
+  it('makes signingSecrets optional', () => {
+    const result = webhookConfigSchema.parse({});
+    expect(result.signingSecrets).toBeUndefined();
+  });
+});
+
+describe('learningConfigSchema', () => {
+  it('defaults enabled to true', () => {
+    const result = learningConfigSchema.parse({});
+    expect(result.enabled).toBe(true);
+  });
+
+  it('accepts enabled false', () => {
+    const result = learningConfigSchema.parse({ enabled: false });
+    expect(result.enabled).toBe(false);
   });
 });

@@ -75,6 +75,9 @@ export default function LiveView() {
             value={summary.errorStepCount}
             highlight={summary.errorStepCount > 0}
           />
+          {summary.contexts && summary.contexts.length > 1 && (
+            <StatCard label="Actors" value={summary.contexts.length} />
+          )}
         </div>
       )}
 

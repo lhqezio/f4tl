@@ -140,6 +140,66 @@ describe('ReportManager', () => {
     });
   });
 
+  describe('contextId support', () => {
+    it('createBug stores contextId when provided', () => {
+      const bug = manager.createBug({
+        title: 'Multi-actor bug',
+        severity: 'major',
+        stepsToReproduce: ['Step 1'],
+        expected: 'Works',
+        actual: 'Broken',
+        evidenceStepIds: [],
+        contextId: 'seller',
+      });
+      expect(bug.contextId).toBe('seller');
+    });
+
+    it('createBug omits contextId when not provided', () => {
+      const bug = manager.createBug({
+        title: 'Single-context bug',
+        severity: 'minor',
+        stepsToReproduce: [],
+        expected: '',
+        actual: '',
+        evidenceStepIds: [],
+      });
+      expect(bug.contextId).toBeUndefined();
+    });
+
+    it('addFinding stores contextId when provided', () => {
+      const finding = manager.addFinding({
+        title: 'Actor-specific finding',
+        category: 'usability',
+        description: 'From buyer perspective',
+        evidenceStepIds: [],
+        contextId: 'buyer',
+      });
+      expect(finding.contextId).toBe('buyer');
+    });
+
+    it('getSummary includes stepsByContext for multi-context sessions', () => {
+      const steps = [
+        createMockStep({ id: 's1', contextId: 'buyer' }),
+        createMockStep({ id: 's2', contextId: 'seller' }),
+        createMockStep({ id: 's3', contextId: 'buyer' }),
+      ];
+      const session = createMockSession({ steps, contexts: ['buyer', 'seller'] });
+      const summary = manager.getSummary(session);
+
+      expect(summary.stepsByContext).toEqual({ buyer: 2, seller: 1 });
+      expect(summary.contexts).toEqual(['buyer', 'seller']);
+    });
+
+    it('getSummary omits stepsByContext for single-context sessions', () => {
+      const steps = [createMockStep({ id: 's1' }), createMockStep({ id: 's2' })];
+      const session = createMockSession({ steps });
+      const summary = manager.getSummary(session);
+
+      expect(summary.stepsByContext).toBeUndefined();
+      expect(summary.contexts).toBeUndefined();
+    });
+  });
+
   describe('getBugs / getFindings', () => {
     it('getBugs returns a copy, not the same reference', () => {
       manager.createBug({

@@ -193,6 +193,87 @@ describe('SessionManager', () => {
     });
   });
 
+  describe('contextId tracking', () => {
+    it('stores contextId on step when provided', async () => {
+      manager.startSession(createMinimalF4tlConfig());
+      const step = await manager.recordStep(
+        createAction(),
+        'screenshot',
+        createMetadata(),
+        100,
+        undefined,
+        'buyer',
+      );
+      expect(step.contextId).toBe('buyer');
+    });
+
+    it('omits contextId when not provided', async () => {
+      manager.startSession(createMinimalF4tlConfig());
+      const step = await manager.recordStep(createAction(), 'screenshot', createMetadata(), 100);
+      expect(step.contextId).toBeUndefined();
+    });
+
+    it('includes contextId in step:recorded event', async () => {
+      const listener = vi.fn();
+      manager.on('step:recorded', listener);
+      manager.startSession(createMinimalF4tlConfig());
+
+      await manager.recordStep(
+        createAction(),
+        'screenshot',
+        createMetadata(),
+        100,
+        undefined,
+        'seller',
+      );
+
+      const event = listener.mock.calls[0][0];
+      expect((event.data as any).step.contextId).toBe('seller');
+    });
+
+    it('tracks contexts and includes them in session on endSession', async () => {
+      manager.startSession(createMinimalF4tlConfig());
+      await manager.recordStep(createAction(), 'ss', createMetadata(), 50, undefined, 'buyer');
+      await manager.recordStep(createAction(), 'ss', createMetadata(), 50, undefined, 'seller');
+      await manager.recordStep(createAction(), 'ss', createMetadata(), 50, undefined, 'buyer');
+
+      const session = await manager.endSession();
+      expect(session.contexts).toBeDefined();
+      expect(session.contexts).toHaveLength(2);
+      expect(session.contexts).toContain('buyer');
+      expect(session.contexts).toContain('seller');
+    });
+
+    it('omits contexts when no contextId was used', async () => {
+      manager.startSession(createMinimalF4tlConfig());
+      await manager.recordStep(createAction(), 'ss', createMetadata(), 50);
+      const session = await manager.endSession();
+      expect(session.contexts).toBeUndefined();
+    });
+
+    it('includes contextId in artifact JSON when keepArtifacts is true', async () => {
+      const artifactManager = new SessionManager(createSessionConfig({ keepArtifacts: true }));
+      artifactManager.startSession(createMinimalF4tlConfig());
+
+      await artifactManager.recordStep(
+        createAction(),
+        'base64',
+        createMetadata(),
+        100,
+        undefined,
+        'admin',
+      );
+
+      // Find the JSON writeFile call (not the PNG one)
+      const jsonCall = mockedWriteFile.mock.calls.find(
+        (call) => typeof call[1] === 'string' && call[1].includes('"contextId"'),
+      );
+      expect(jsonCall).toBeDefined();
+      const written = JSON.parse(jsonCall![1] as string);
+      expect(written.contextId).toBe('admin');
+    });
+  });
+
   describe('endSession', () => {
     it('sets endTime and returns completed session', async () => {
       manager.startSession(createMinimalF4tlConfig());

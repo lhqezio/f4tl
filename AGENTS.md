@@ -45,106 +45,128 @@ To co-host the dashboard, use `"args": ["serve", "--dashboard"]`.
 
 ---
 
-## Available Tools (29)
+## Available Tools (34)
 
 ### Browser (15)
 
 Use these to interact with the web app like a user.
 
-| Tool | What it does |
-|---|---|
-| `browser_navigate` | Go to a URL. Returns screenshot + console/network errors. |
-| `browser_click` | Click an element by CSS, text, role, or xpath selector. |
-| `browser_fill` | Clear an input and type a value. |
-| `browser_type` | Type keystroke-by-keystroke (for autocomplete/search). |
-| `browser_select` | Pick a dropdown option by value or label. |
-| `browser_hover` | Hover over an element (reveal tooltips, menus). |
-| `browser_press` | Press a key combo (Enter, Tab, Control+a). |
-| `browser_scroll` | Scroll page or a container element. |
-| `browser_screenshot` | Capture the current viewport without acting. |
-| `browser_evaluate` | Run JavaScript in the page and return the result. |
-| `browser_resize` | Change the viewport size (for responsive testing). |
-| `browser_wait` | Wait for time, a selector, network idle, or URL change. |
-| `browser_back` | Go back in browser history. |
-| `browser_forward` | Go forward in browser history. |
-| `browser_accessibility_tree` | Get the page's accessibility tree (for a11y auditing). |
+| Tool                         | What it does                                              |
+| ---------------------------- | --------------------------------------------------------- |
+| `browser_navigate`           | Go to a URL. Returns screenshot + console/network errors. |
+| `browser_click`              | Click an element by CSS, text, role, or xpath selector.   |
+| `browser_fill`               | Clear an input and type a value.                          |
+| `browser_type`               | Type keystroke-by-keystroke (for autocomplete/search).    |
+| `browser_select`             | Pick a dropdown option by value or label.                 |
+| `browser_hover`              | Hover over an element (reveal tooltips, menus).           |
+| `browser_press`              | Press a key combo (Enter, Tab, Control+a).                |
+| `browser_scroll`             | Scroll page or a container element.                       |
+| `browser_screenshot`         | Capture the current viewport without acting.              |
+| `browser_evaluate`           | Run JavaScript in the page and return the result.         |
+| `browser_resize`             | Change the viewport size (for responsive testing).        |
+| `browser_wait`               | Wait for time, a selector, network idle, or URL change.   |
+| `browser_back`               | Go back in browser history.                               |
+| `browser_forward`            | Go forward in browser history.                            |
+| `browser_accessibility_tree` | Get the page's accessibility tree (for a11y auditing).    |
 
 ### Network (4)
 
 Use these to inspect and manipulate HTTP traffic.
 
-| Tool | What it does |
-|---|---|
-| `network_get_requests` | Get captured requests/responses. Filter by URL pattern, method, status code, resource type. |
-| `network_intercept` | Add a rule to block, mock, or delay matching requests. |
-| `network_clear_intercepts` | Remove all intercept rules. |
-| `network_get_websockets` | Get captured WebSocket messages. |
+| Tool                       | What it does                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `network_get_requests`     | Get captured requests/responses. Filter by URL pattern, method, status code, resource type. |
+| `network_intercept`        | Add a rule to block, mock, or delay matching requests.                                      |
+| `network_clear_intercepts` | Remove all intercept rules.                                                                 |
+| `network_get_websockets`   | Get captured WebSocket messages.                                                            |
 
 ### Code (4)
 
 Use these to read and search the project source code.
 
-| Tool | What it does |
-|---|---|
-| `code_search` | Search codebase with regex (ripgrep). |
-| `code_read` | Read a file's contents. |
-| `code_find_files` | Find files by glob pattern. |
-| `code_git_diff` | Get uncommitted changes or diff against a ref. |
+| Tool              | What it does                                   |
+| ----------------- | ---------------------------------------------- |
+| `code_search`     | Search codebase with regex (ripgrep).          |
+| `code_read`       | Read a file's contents.                        |
+| `code_find_files` | Find files by glob pattern.                    |
+| `code_git_diff`   | Get uncommitted changes or diff against a ref. |
 
 ### Context (2-3)
 
 Use these for multi-user testing scenarios.
 
-| Tool | What it does |
-|---|---|
-| `browser_new_context` | Create an isolated browser context (separate cookies, storage). |
-| `browser_switch_context` | Switch the active context by name. |
-| `browser_auth` | Authenticate with a configured role (only if auth is in config). |
+| Tool                     | What it does                                                     |
+| ------------------------ | ---------------------------------------------------------------- |
+| `browser_new_context`    | Create an isolated browser context (separate cookies, storage).  |
+| `browser_switch_context` | Switch the active context by name.                               |
+| `browser_auth`           | Authenticate with a configured role (only if auth is in config). |
 
 ### Report (4)
 
 Use these to record issues and generate reports.
 
-| Tool | What it does |
-|---|---|
-| `report_create_bug` | File a bug with severity, repro steps, expected/actual behavior. |
-| `report_add_finding` | Record a QA finding (usability, performance, a11y, security, suggestion). |
-| `report_generate` | Generate a report in markdown, JSON, or HTML. |
-| `report_get_session_summary` | Get current stats: step count, bugs, findings, duration. |
+| Tool                         | What it does                                                              |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `report_create_bug`          | File a bug with severity, repro steps, expected/actual behavior.          |
+| `report_add_finding`         | Record a QA finding (usability, performance, a11y, security, suggestion). |
+| `report_generate`            | Generate a report in markdown, JSON, or HTML.                             |
+| `report_get_session_summary` | Get current stats: step count, bugs, findings, duration.                  |
 
 ### Logs (3, optional — only if `logs` is configured)
 
-| Tool | What it does |
-|---|---|
-| `logs_tail` | Get the most recent log entries from a source. |
-| `logs_get` | Get log entries filtered by source, level, time range. |
-| `logs_search` | Search logs by regex pattern. |
+| Tool          | What it does                                           |
+| ------------- | ------------------------------------------------------ |
+| `logs_tail`   | Get the most recent log entries from a source.         |
+| `logs_get`    | Get log entries filtered by source, level, time range. |
+| `logs_search` | Search logs by regex pattern.                          |
 
 ### Database (3, optional — only if `database` is configured)
 
-| Tool | What it does |
-|---|---|
-| `db_query` | Execute a read-only SQL query (SELECT only, auto-limited to 1000 rows). |
-| `db_schema` | Get table/column/foreign key information. |
-| `db_explain` | Get the query execution plan (EXPLAIN ANALYZE). |
+| Tool         | What it does                                                            |
+| ------------ | ----------------------------------------------------------------------- |
+| `db_query`   | Execute a read-only SQL query (SELECT only, auto-limited to 1000 rows). |
+| `db_schema`  | Get table/column/foreign key information.                               |
+| `db_explain` | Get the query execution plan (EXPLAIN ANALYZE).                         |
+
+### Webhook (2, optional — only if `webhooks` is configured)
+
+Use these to test webhook handlers by discovering and firing synthetic events.
+
+| Tool               | What it does                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `webhook_discover` | Scan project source code to find webhook endpoints, event types, signing, and handler files. |
+| `webhook_fire`     | Fire a synthetic webhook event to an endpoint with optional signing and UI verification.     |
+
+### Learning (3, optional — enabled by default)
+
+Use these to query past session data and learn from previous test runs.
+
+| Tool                  | What it does                                                                     |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `session_get_history` | List past sessions with stats (steps, bugs, URLs covered, action types).         |
+| `session_get_bugs`    | Get a bug ledger across all sessions with fingerprint-based dedup/recurrence.    |
+| `session_compare`     | Compare two sessions — diff URLs, action types, and bugs (new/fixed/persistent). |
 
 ---
 
-## Available Prompts (7)
+## Available Prompts (10)
 
 Prompts are pre-built conversation starters. Invoke them from your MCP client to start a QA workflow.
 
-| Prompt | When to use it |
-|---|---|
-| `smoke-test` | Quick health check — navigate, screenshot, check for console errors and 4xx/5xx. |
-| `full-qa` | Comprehensive pass — explore all pages, test forms, check a11y, responsive, generate HTML report. |
-| `regression-test` | After a deploy — re-run key user flows, compare against a baseline session. |
-| `accessibility-audit` | Audit ARIA labels, alt text, heading structure, keyboard navigation, contrast. |
-| `form-test` | Test form validation — empty, valid, invalid, XSS payloads, boundary values. |
-| `performance-check` | Check load times, large assets, slow API calls, excessive DOM nodes. |
-| `visual-inventory` | Screenshot every page at desktop (1280x720), tablet (768x1024), mobile (375x667). |
+| Prompt                | When to use it                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| `smoke-test`          | Quick health check — navigate, screenshot, check for console errors and 4xx/5xx.                  |
+| `full-qa`             | Comprehensive pass — explore all pages, test forms, check a11y, responsive, generate HTML report. |
+| `regression-test`     | After a deploy — re-run key user flows, compare against a baseline session.                       |
+| `accessibility-audit` | Audit ARIA labels, alt text, heading structure, keyboard navigation, contrast.                    |
+| `form-test`           | Test form validation — empty, valid, invalid, XSS payloads, boundary values.                      |
+| `performance-check`   | Check load times, large assets, slow API calls, excessive DOM nodes.                              |
+| `visual-inventory`    | Screenshot every page at desktop (1280x720), tablet (768x1024), mobile (375x667).                 |
+| `multi-actor-test`    | Coordinated multi-user test — e.g. buyer + seller + escrow interacting in the same app.           |
+| `webhook-test`        | Discover webhook endpoints, fire synthetic events, verify UI/state, test idempotency.             |
+| `regression-run`      | Use session history to find gaps and regressions, then run targeted tests.                        |
 
-All prompts accept a `url` argument. Some accept optional extras (`scope`, `baseline_session_id`, `form_selector`).
+All prompts accept a `url` argument. Some accept optional extras (`scope`, `baseline_session_id`, `form_selector`, `scenario`, `actors`).
 
 ---
 
@@ -168,18 +190,59 @@ All prompts accept a `url` argument. Some accept optional extras (`scope`, `base
 ### Filing bugs
 
 Use `report_create_bug` with:
+
 - **severity**: `critical` (app crashes, data loss), `major` (broken feature), `minor` (cosmetic/edge case), `cosmetic` (visual only)
 - **stepsToReproduce**: Array of strings, step by step
 - **expectedBehavior** and **actualBehavior**: Be specific
 - **evidenceStepIds**: Reference step IDs from the session for screenshot evidence
 - **url**: The page where the bug occurs
+- **contextId** (optional): The actor/context that encountered the bug (e.g. `"buyer"`, `"seller"`)
 
 ### Recording findings
 
 Use `report_add_finding` with:
+
 - **category**: `usability`, `performance`, `accessibility`, `security`, `suggestion`, `observation`
 - **description**: What you found and why it matters
 - **evidenceStepIds**: Reference steps with screenshots
+- **contextId** (optional): The actor/context related to this finding
+
+### Multi-Actor Testing
+
+For scenarios involving multiple users (buyer/seller, admin/user, etc.), use the `multi-actor-test` prompt or orchestrate manually:
+
+1. **Create contexts** — `browser_new_context` with a name per actor (e.g. `buyer`, `seller`).
+2. **Authenticate** — `browser_auth` each context with its role (if auth is configured).
+3. **Switch and act** — `browser_switch_context` before each actor's actions. All browser tools automatically tag steps with the active context.
+4. **Cross-actor verification** — after one actor acts, switch to another and verify the state change is visible.
+5. **File bugs with contextId** — use the `contextId` parameter on `report_create_bug` and `report_add_finding` to attribute issues to specific actors.
+6. **Generate report** — the HTML report will show an "Actors" stat, context-colored timeline, and per-actor badges on bugs/findings.
+
+Example `actors` argument for the prompt: `"buyer:buyer_role, seller:seller_role, admin:admin_role"`.
+
+### Webhook Testing
+
+For testing payment callbacks, GitHub webhooks, and other event-driven flows:
+
+1. **Discover** — call `webhook_discover` to scan the codebase for webhook endpoints, event types, and signing providers.
+2. **Set up state** — use browser tools to create the prerequisite state (e.g. create an order before testing `payment_intent.succeeded`).
+3. **Fire events** — call `webhook_fire` with the event payload and signing provider. Use `verifyUi` to check the UI updated.
+4. **Test idempotency** — fire the same event twice and verify no double-processing.
+5. **Test error paths** — fire `payment_failed` after `payment_succeeded`, test webhook timeout recovery.
+6. **File bugs** — use `report_create_bug` for any failures with evidence.
+
+Or use the `webhook-test` prompt to automate this flow.
+
+### Self-Optimization
+
+The agent gets smarter over time by learning from past sessions:
+
+1. **Check coverage** — call `session_get_history` with `groupBy: 'url'` to see which pages are under-tested.
+2. **Track regressions** — call `session_get_bugs` to see recurring bugs (same fingerprint across sessions).
+3. **Compare runs** — call `session_compare` to diff two sessions and find gaps (URLs, action types, bugs).
+4. **Targeted testing** — focus on under-tested areas and previously buggy pages.
+
+Or use the `regression-run` prompt which automates this analysis-then-test workflow.
 
 ---
 
@@ -192,14 +255,14 @@ import { defineConfig } from 'f4tl';
 
 export default defineConfig({
   browser: {
-    headless: true,           // false to watch the browser
+    headless: true, // false to watch the browser
     viewport: { width: 1280, height: 720 },
-    timeout: 30_000,          // ms per action
+    timeout: 30_000, // ms per action
   },
   session: {
     outputDir: '.f4tl/sessions',
     maxSteps: 1000,
-    keepArtifacts: true,      // persist screenshots
+    keepArtifacts: true, // persist screenshots
   },
   codebase: {
     projectRoot: process.cwd(),
@@ -242,6 +305,20 @@ export default defineConfig({
     connectionString: process.env.DATABASE_URL,
     allowedTables: ['users', 'orders'],
   },
+
+  // Optional: webhook testing
+  webhooks: {
+    baseUrl: 'http://localhost:3000',
+    signingSecrets: {
+      stripe: process.env.STRIPE_WEBHOOK_SECRET,
+      github: process.env.GITHUB_WEBHOOK_SECRET,
+    },
+  },
+
+  // Optional: self-optimization (enabled by default)
+  learning: {
+    enabled: true,
+  },
 });
 ```
 
@@ -271,13 +348,13 @@ Reports are saved to `.f4tl/reports/`:
 
 ## CLI Commands
 
-| Command | Description |
-|---|---|
-| `f4tl serve [--headless] [--dashboard]` | Start the MCP server |
-| `f4tl init [--force]` | Generate config with auto-detection |
-| `f4tl dashboard [--port]` | Browse historical sessions (standalone) |
-| `f4tl sessions [--json] [--limit]` | List past sessions |
-| `f4tl clean [--sessions] [--reports] [--all] [--older-than] [--dry-run]` | Clean up artifacts |
+| Command                                                                  | Description                             |
+| ------------------------------------------------------------------------ | --------------------------------------- |
+| `f4tl serve [--headless] [--dashboard]`                                  | Start the MCP server                    |
+| `f4tl init [--force]`                                                    | Generate config with auto-detection     |
+| `f4tl dashboard [--port]`                                                | Browse historical sessions (standalone) |
+| `f4tl sessions [--json] [--limit]`                                       | List past sessions                      |
+| `f4tl clean [--sessions] [--reports] [--all] [--older-than] [--dry-run]` | Clean up artifacts                      |
 
 ---
 

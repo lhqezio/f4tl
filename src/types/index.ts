@@ -98,6 +98,8 @@ export interface F4tlConfig {
   codebase: CodebaseConfig;
   report: ReportConfig;
   dashboard: DashboardConfig;
+  webhooks?: WebhookConfig;
+  learning?: LearningConfig;
 }
 
 // ── Browser Action Types ─────────────────────────────────────────────────────
@@ -161,6 +163,7 @@ export interface StepMetadata {
 
 export interface SessionStep {
   id: string;
+  contextId?: string;
   action: BrowserAction;
   screenshot?: string;
   metadata: StepMetadata;
@@ -173,6 +176,7 @@ export interface Session {
   startTime: number;
   endTime?: number;
   steps: SessionStep[];
+  contexts?: string[];
   config: F4tlConfig;
 }
 
@@ -303,6 +307,7 @@ export type BugSeverity = 'critical' | 'major' | 'minor' | 'cosmetic';
 
 export interface Bug {
   id: string;
+  contextId?: string;
   title: string;
   severity: BugSeverity;
   stepsToReproduce: string[];
@@ -324,6 +329,7 @@ export type FindingCategory =
 
 export interface Finding {
   id: string;
+  contextId?: string;
   title: string;
   category: FindingCategory;
   description: string;
@@ -345,6 +351,8 @@ export interface SessionSummary {
   bugsBySeverity: Record<BugSeverity, number>;
   findingsByCategory: Record<FindingCategory, number>;
   errorStepCount: number;
+  contexts?: string[];
+  stepsByContext?: Record<string, number>;
 }
 
 export interface ReportData {
@@ -370,6 +378,86 @@ export interface SessionEvent<T = unknown> {
   sessionId: string;
   timestamp: number;
   data: T;
+}
+
+// ── Webhook Types ────────────────────────────────────────────────────────────
+
+export interface WebhookEndpoint {
+  route: string;
+  file: string;
+  signing?: string;
+  events: WebhookEvent[];
+  unhandledEvents?: string[];
+}
+
+export interface WebhookEvent {
+  type: string;
+  requiredFields: string[];
+  stateTransition?: string;
+  handlerLocation: string;
+}
+
+export interface WebhookDiscovery {
+  endpoints: WebhookEndpoint[];
+  timestamp: number;
+}
+
+export interface WebhookFireResult {
+  status: number;
+  responseBody: string;
+  duration: number;
+  uiVerification?: {
+    matched: boolean;
+    actual?: string;
+    selector: string;
+    expected: string;
+  };
+  networkEffects?: { url: string; method: string; status: number }[];
+}
+
+export interface WebhookConfig {
+  signingSecrets?: Record<string, string>;
+  baseUrl: string;
+}
+
+// ── Learning Types ───────────────────────────────────────────────────────────
+
+export interface LearningConfig {
+  enabled: boolean;
+}
+
+export interface SessionHistoryEntry {
+  sessionId: string;
+  startTime: number;
+  endTime?: number;
+  duration: number;
+  stepCount: number;
+  bugCount: number;
+  findingCount: number;
+  errorCount: number;
+  urlsCovered: string[];
+  actionTypes: Record<string, number>;
+  contexts?: string[];
+}
+
+export interface BugLedgerEntry {
+  bugId: string;
+  sessionId: string;
+  title: string;
+  severity: BugSeverity;
+  url?: string;
+  timestamp: number;
+  contextId?: string;
+  fingerprint: string;
+}
+
+export interface SessionComparison {
+  sessionA: string;
+  sessionB: string;
+  onlyInA: { urls: string[]; actionTypes: string[] };
+  onlyInB: { urls: string[]; actionTypes: string[] };
+  common: { urls: string[]; actionTypes: string[] };
+  bugDiff: { newInB: string[]; fixedInB: string[]; persistent: string[] };
 }
 
 export interface WsMessage {

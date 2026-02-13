@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 const links = [
   { to: '/', label: 'Sessions' },
   { to: '/live', label: 'Live' },
+  { to: '/history', label: 'History' },
 ];
 
 export default function Layout() {

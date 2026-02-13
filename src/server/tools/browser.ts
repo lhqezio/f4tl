@@ -105,6 +105,10 @@ export class BrowserTools {
     private sm: SessionManager,
   ) {}
 
+  private getContextId(): string | undefined {
+    return this.bm.getContextNames().length > 1 ? this.bm.getActiveContextId() : undefined;
+  }
+
   // Helper: run an action, capture, record, return MCP result
   private async exec(
     type: BrowserActionType,
@@ -124,7 +128,15 @@ export class BrowserTools {
 
       const capture = await this.bm.getCaptureManager().capture();
       const duration = Date.now() - start;
-      await this.sm.recordStep(browserAction, capture.screenshot, capture.metadata, duration);
+      const ctxId = this.getContextId();
+      await this.sm.recordStep(
+        browserAction,
+        capture.screenshot,
+        capture.metadata,
+        duration,
+        undefined,
+        ctxId,
+      );
 
       const info = [
         `url: ${capture.metadata.url}`,
@@ -154,7 +166,9 @@ export class BrowserTools {
         consoleErrors: [],
         networkErrors: [],
       };
-      await this.sm.recordStep(browserAction, '', emptyMeta, duration, msg).catch(() => {});
+      await this.sm
+        .recordStep(browserAction, '', emptyMeta, duration, msg, this.getContextId())
+        .catch(() => {});
       return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true };
     }
   }
@@ -172,7 +186,15 @@ export class BrowserTools {
       const result = await this.bm.queueReadAction(action);
       const capture = await this.bm.getCaptureManager().capture();
       const duration = Date.now() - start;
-      await this.sm.recordStep(browserAction, capture.screenshot, capture.metadata, duration);
+      const ctxId = this.getContextId();
+      await this.sm.recordStep(
+        browserAction,
+        capture.screenshot,
+        capture.metadata,
+        duration,
+        undefined,
+        ctxId,
+      );
 
       const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
 
@@ -192,7 +214,9 @@ export class BrowserTools {
         consoleErrors: [],
         networkErrors: [],
       };
-      await this.sm.recordStep(browserAction, '', emptyMeta, duration, msg).catch(() => {});
+      await this.sm
+        .recordStep(browserAction, '', emptyMeta, duration, msg, this.getContextId())
+        .catch(() => {});
       return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true };
     }
   }
@@ -293,7 +317,15 @@ export class BrowserTools {
     try {
       const capture = await this.bm.queueReadAction(() => this.bm.getCaptureManager().capture());
       const duration = Date.now() - start;
-      await this.sm.recordStep(action, capture.screenshot, capture.metadata, duration);
+      const ctxId = this.getContextId();
+      await this.sm.recordStep(
+        action,
+        capture.screenshot,
+        capture.metadata,
+        duration,
+        undefined,
+        ctxId,
+      );
 
       return {
         content: [
@@ -310,7 +342,9 @@ export class BrowserTools {
         consoleErrors: [],
         networkErrors: [],
       };
-      await this.sm.recordStep(action, '', emptyMeta, Date.now() - start, msg).catch(() => {});
+      await this.sm
+        .recordStep(action, '', emptyMeta, Date.now() - start, msg, this.getContextId())
+        .catch(() => {});
       return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true };
     }
   }
