@@ -68,44 +68,10 @@ const initCommand = defineCommand({
     const configPath = join(cwd, 'f4tl.config.ts');
 
     // --- Auto-detect from package.json ---
-    let detectedFramework: string | null = null;
-    let detectedDatabase = false;
-    const frameworkMap: Record<string, string> = {
-      next: 'Next.js',
-      nuxt: 'Nuxt',
-      vite: 'Vite',
-      remix: 'Remix',
-      '@remix-run/react': 'Remix',
-      express: 'Express',
-      fastify: 'Fastify',
-      astro: 'Astro',
-    };
-    const dbPackages = ['pg', 'prisma', 'drizzle-orm', 'typeorm', 'sequelize'];
-
-    try {
-      const pkgRaw = await readFile(join(cwd, 'package.json'), 'utf-8');
-      const pkg = JSON.parse(pkgRaw);
-      const allDeps = {
-        ...pkg.dependencies,
-        ...pkg.devDependencies,
-      } as Record<string, string>;
-
-      for (const [key, label] of Object.entries(frameworkMap)) {
-        if (allDeps[key]) {
-          detectedFramework = label;
-          break;
-        }
-      }
-
-      for (const dbPkg of dbPackages) {
-        if (allDeps[dbPkg]) {
-          detectedDatabase = true;
-          break;
-        }
-      }
-    } catch {
-      // No package.json — that's fine, skip detection
-    }
+    const { detectFrameworkFromPackageJson } = await import('../core/framework-detector.js');
+    const detected = await detectFrameworkFromPackageJson(cwd);
+    const detectedFramework = detected.framework;
+    const detectedDatabase = !!detected.database;
 
     // --- Detection summary ---
     const detections: string[] = [];

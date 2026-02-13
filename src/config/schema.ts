@@ -25,6 +25,12 @@ export const captureConfigSchema = z.object({
   quality: z.number().int().min(1).max(100).default(90),
   fullPage: z.boolean().default(false),
   animations: z.enum(['disabled', 'allow']).default('disabled'),
+  suppressErrors: z
+    .object({
+      console: z.array(z.string()).default([]),
+      network: z.array(z.string()).default([]),
+    })
+    .optional(),
 });
 
 export const mcpConfigSchema = z.object({
@@ -70,8 +76,21 @@ const authFormLoginSchema = z.object({
   passwordEnv: z.string(),
 });
 
+const authJwtSchema = z.object({
+  tokenEnv: z.string(),
+  storageKey: z.string().default('token'),
+  storageType: z.enum(['localStorage', 'sessionStorage', 'cookie']).default('localStorage'),
+});
+
+const authOauthSchema = z.object({
+  provider: z.string(),
+  authUrl: z.string(),
+  clientIdEnv: z.string(),
+  callbackUrl: z.string(),
+});
+
 export const authConfigSchema = z.object({
-  strategy: z.enum(['form', 'cookie', 'storage-state', 'custom']),
+  strategy: z.enum(['form', 'cookie', 'storage-state', 'custom', 'jwt', 'oauth']),
   formLogin: authFormLoginSchema.optional(),
   cookies: z
     .object({
@@ -81,6 +100,8 @@ export const authConfigSchema = z.object({
     .optional(),
   storageStatePath: z.string().optional(),
   customScriptPath: z.string().optional(),
+  jwt: authJwtSchema.optional(),
+  oauth: authOauthSchema.optional(),
 });
 
 export const reportConfigSchema = z.object({
@@ -95,6 +116,39 @@ export const dashboardConfigSchema = z.object({
 export const webhookConfigSchema = z.object({
   signingSecrets: z.record(z.string(), z.string()).optional(),
   baseUrl: z.string().default('http://localhost:3000'),
+});
+
+export const journeyStepSchema = z.object({
+  action: z.string(),
+  target: z.string().optional(),
+  value: z.string().optional(),
+  expect: z.string().optional(),
+  note: z.string().optional(),
+});
+
+export const journeySchema = z.object({
+  description: z.string(),
+  auth: z.string().optional(),
+  dependsOn: z.array(z.string()).optional(),
+  mode: z.enum(['guided', 'autonomous']).default('guided'),
+  steps: z.array(journeyStepSchema),
+});
+
+export const journeysConfigSchema = z.record(z.string(), journeySchema);
+
+export const appPageSchema = z.object({
+  path: z.string(),
+  label: z.string().optional(),
+  auth: z.string().optional(),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+});
+
+export const appConfigSchema = z.object({
+  name: z.string().optional(),
+  baseUrl: z.string().url(),
+  description: z.string().optional(),
+  pages: z.array(appPageSchema).optional(),
+  ignorePatterns: z.array(z.string()).optional(),
 });
 
 export const learningConfigSchema = z.object({
@@ -114,6 +168,8 @@ export const configSchema = z.object({
   dashboard: dashboardConfigSchema.default({}),
   webhooks: webhookConfigSchema.optional(),
   learning: learningConfigSchema.optional(),
+  app: appConfigSchema.optional(),
+  journeys: journeysConfigSchema.optional(),
 });
 
 export type ValidatedConfig = z.infer<typeof configSchema>;

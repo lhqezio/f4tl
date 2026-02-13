@@ -4,12 +4,16 @@ MCP server for autonomous full-stack QA. Give an AI agent a browser, your logs, 
 
 ## Features
 
-- **29 MCP tools** across 6 categories: browser, network, code, context, logs, database, reports
-- **7 MCP prompts** for common QA workflows (smoke test, full QA, regression, accessibility, forms, performance, visual inventory)
+- **41 MCP tools** across 12 categories: browser, network, code, context, report, logs, database, webhook, learning, journey, framework, auth
+- **10 MCP prompts** for common QA workflows (smoke test, full QA, regression, accessibility, forms, performance, visual inventory, multi-actor, webhook, regression-run)
 - **Browser automation** via Playwright — navigate, click, fill, type, screenshot, evaluate JS, accessibility tree
 - **Network capture** — inspect requests/responses, mock/block/delay with intercept rules, WebSocket monitoring
 - **Code exploration** — ripgrep search, file reading, glob find, git diff
-- **Multi-context** — isolated browser contexts for multi-user testing, configurable auth strategies
+- **Multi-context** — isolated browser contexts for multi-user testing, configurable auth strategies (form, JWT, OAuth, cookie, storage-state, custom)
+- **Journey definitions** — declarative multi-step test flows with dependency ordering, guided and autonomous modes
+- **Framework detection** — auto-detect frontend framework, SPA behavior, database, and get framework-specific testing hints
+- **Project profiles** — describe your app's pages, roles, and ignore patterns so the AI has context from the start
+- **Error suppression** — filter known console/network errors by pattern to keep reports clean
 - **Report system** — record bugs and findings, generate reports in Markdown/JSON/HTML
 - **Log collection** — tail process output or log files, search with regex, parse JSON/CLF/plain formats
 - **Database inspection** — read-only SQL queries, schema introspection, EXPLAIN ANALYZE (PostgreSQL)
@@ -73,30 +77,33 @@ See [`examples/f4tl.config.ts`](examples/f4tl.config.ts) for a fully annotated c
 
 ### Config Reference
 
-| Section     | Key               | Default                     | Description                                                       |
-| ----------- | ----------------- | --------------------------- | ----------------------------------------------------------------- |
-| `browser`   | `headless`        | `true`                      | Run browser without UI                                            |
-|             | `viewport`        | `1280x720`                  | Browser viewport size                                             |
-|             | `slowMo`          | `0`                         | Delay between actions (ms)                                        |
-|             | `timeout`         | `30000`                     | Default action timeout (ms)                                       |
-|             | `devtools`        | `false`                     | Open devtools on launch                                           |
-| `session`   | `outputDir`       | `.f4tl/sessions`            | Session artifact directory                                        |
-|             | `maxSteps`        | `1000`                      | Max steps per session                                             |
-|             | `keepArtifacts`   | `true`                      | Persist screenshots and session data                              |
-| `capture`   | `format`          | `png`                       | Screenshot format (`png` or `jpeg`)                               |
-|             | `quality`         | `90`                        | JPEG quality (1-100)                                              |
-|             | `fullPage`        | `false`                     | Capture full page or viewport                                     |
-| `codebase`  | `projectRoot`     | `cwd()`                     | Project root for code tools                                       |
-|             | `excludePatterns` | `[node_modules, .git, ...]` | Glob patterns to exclude from search                              |
-| `report`    | `outputDir`       | `.f4tl/reports`             | Report output directory                                           |
-| `dashboard` | `port`            | `4173`                      | Dashboard server port                                             |
-|             | `host`            | `localhost`                 | Dashboard server host                                             |
-| `mcp`       | `name`            | `f4tl`                      | MCP server name                                                   |
-|             | `version`         | `0.1.0`                     | MCP server version                                                |
-|             | `logLevel`        | `info`                      | Log level (`debug`, `info`, `warn`, `error`)                      |
-| `auth`      | _(per role)_      | —                           | Auth strategies: `form`, `cookie`, `storage-state`, `custom`      |
-| `logs`      | _(per source)_    | —                           | Log sources: `process` or `file` with `json`/`clf`/`plain` parser |
-| `database`  | `type`            | —                           | Database type (`postgres`), connection string or fields           |
+| Section     | Key               | Default                     | Description                                                                  |
+| ----------- | ----------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `browser`   | `headless`        | `true`                      | Run browser without UI                                                       |
+|             | `viewport`        | `1280x720`                  | Browser viewport size                                                        |
+|             | `slowMo`          | `0`                         | Delay between actions (ms)                                                   |
+|             | `timeout`         | `30000`                     | Default action timeout (ms)                                                  |
+|             | `devtools`        | `false`                     | Open devtools on launch                                                      |
+| `session`   | `outputDir`       | `.f4tl/sessions`            | Session artifact directory                                                   |
+|             | `maxSteps`        | `1000`                      | Max steps per session                                                        |
+|             | `keepArtifacts`   | `true`                      | Persist screenshots and session data                                         |
+| `capture`   | `format`          | `png`                       | Screenshot format (`png` or `jpeg`)                                          |
+|             | `quality`         | `90`                        | JPEG quality (1-100)                                                         |
+|             | `fullPage`        | `false`                     | Capture full page or viewport                                                |
+| `codebase`  | `projectRoot`     | `cwd()`                     | Project root for code tools                                                  |
+|             | `excludePatterns` | `[node_modules, .git, ...]` | Glob patterns to exclude from search                                         |
+| `report`    | `outputDir`       | `.f4tl/reports`             | Report output directory                                                      |
+| `dashboard` | `port`            | `4173`                      | Dashboard server port                                                        |
+|             | `host`            | `localhost`                 | Dashboard server host                                                        |
+| `mcp`       | `name`            | `f4tl`                      | MCP server name                                                              |
+|             | `version`         | `0.1.0`                     | MCP server version                                                           |
+|             | `logLevel`        | `info`                      | Log level (`debug`, `info`, `warn`, `error`)                                 |
+| `auth`      | _(per role)_      | —                           | Auth strategies: `form`, `cookie`, `storage-state`, `custom`, `jwt`, `oauth` |
+| `capture`   | `suppressErrors`  | —                           | Patterns to filter known console/network errors                              |
+| `app`       | `name`, `baseUrl` | —                           | App profile: pages, roles, ignore patterns                                   |
+| `journeys`  | _(per journey)_   | —                           | Multi-step test flows with dependencies and modes                            |
+| `logs`      | _(per source)_    | —                           | Log sources: `process` or `file` with `json`/`clf`/`plain` parser            |
+| `database`  | `type`            | —                           | Database type (`postgres`), connection string or fields                      |
 
 ## Tools Reference
 
@@ -171,6 +178,53 @@ See [`examples/f4tl.config.ts`](examples/f4tl.config.ts) for a fully annotated c
 | `db_schema`  | Get database schema           |
 | `db_explain` | Get query execution plan      |
 
+### Webhook (2 tools, optional)
+
+| Tool               | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| `webhook_discover` | Scan source code for webhook endpoints and event types |
+| `webhook_fire`     | Fire a synthetic webhook event with optional signing   |
+
+### Learning (3 tools)
+
+| Tool                  | Description                                                 |
+| --------------------- | ----------------------------------------------------------- |
+| `session_get_history` | List past sessions with stats                               |
+| `session_get_bugs`    | Get bug ledger across sessions with fingerprint-based dedup |
+| `session_compare`     | Compare two sessions — diff URLs, actions, and bugs         |
+
+### Journey (3 tools, optional)
+
+| Tool             | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| `list_journeys`  | List all journeys with descriptions and dependencies |
+| `get_journey`    | Get a journey's full definition and current state    |
+| `journey_status` | Get progress summary across all journeys             |
+
+### Auth (1 tool, optional)
+
+| Tool         | Description                                 |
+| ------------ | ------------------------------------------- |
+| `auth_login` | Authenticate with a role (form, JWT, OAuth) |
+
+### Framework (1 tool)
+
+| Tool               | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| `detect_framework` | Detect framework, version, SPA behavior, and get hints |
+
+### App Profile (1 tool, optional)
+
+| Tool              | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `get_app_profile` | Get the configured app profile (pages, roles, etc.) |
+
+### Error Suppression (1 tool)
+
+| Tool             | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `suppress_error` | Add runtime pattern to suppress known errors |
+
 ## Prompts
 
 MCP prompts are pre-built conversation starters your MCP client can invoke.
@@ -184,6 +238,9 @@ MCP prompts are pre-built conversation starters your MCP client can invoke.
 | `form-test`           | `url`, `form_selector?`       | Test validation: empty, invalid, XSS, boundary values                 |
 | `performance-check`   | `url`                         | Measure load times, flag slow requests, large assets                  |
 | `visual-inventory`    | `url`                         | Screenshot every page at desktop, tablet, and mobile viewports        |
+| `multi-actor-test`    | `url`, `actors`               | Coordinated multi-user test with isolated contexts                    |
+| `webhook-test`        | `url`                         | Discover webhook endpoints, fire events, verify UI/state              |
+| `regression-run`      | `url`                         | Use session history to find gaps and regressions, run targeted tests  |
 
 ## Dashboard
 

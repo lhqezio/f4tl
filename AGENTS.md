@@ -45,7 +45,7 @@ To co-host the dashboard, use `"args": ["serve", "--dashboard"]`.
 
 ---
 
-## Available Tools (34)
+## Available Tools (41)
 
 ### Browser (15)
 
@@ -147,6 +147,40 @@ Use these to query past session data and learn from previous test runs.
 | `session_get_bugs`    | Get a bug ledger across all sessions with fingerprint-based dedup/recurrence.    |
 | `session_compare`     | Compare two sessions — diff URLs, action types, and bugs (new/fixed/persistent). |
 
+### Journey (3, optional — only if `journeys` is configured)
+
+Use these to follow and track multi-step test flows defined in config.
+
+| Tool             | What it does                                                                  |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `list_journeys`  | List all journeys with descriptions, dependencies, mode, and step counts.     |
+| `get_journey`    | Get a specific journey's full definition — steps, auth, mode, and state.      |
+| `journey_status` | Get summary of all journey progress: completed, in-progress, pending, failed. |
+
+### Auth (1, optional — only if `auth` is configured)
+
+| Tool         | What it does                                                        |
+| ------------ | ------------------------------------------------------------------- |
+| `auth_login` | Authenticate with a configured role. Supports form, JWT, and OAuth. |
+
+### Framework (1)
+
+| Tool               | What it does                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `detect_framework` | Detect the project's frontend framework, version, SPA behavior, database, and get framework-specific testing hints. |
+
+### App Profile (1, optional — only if `app` is configured)
+
+| Tool              | What it does                                                         |
+| ----------------- | -------------------------------------------------------------------- |
+| `get_app_profile` | Get the app profile — name, base URL, pages, roles, ignore patterns. |
+
+### Error Suppression (1)
+
+| Tool             | What it does                                                       |
+| ---------------- | ------------------------------------------------------------------ |
+| `suppress_error` | Add a runtime pattern to suppress known console or network errors. |
+
 ---
 
 ## Available Prompts (10)
@@ -233,6 +267,28 @@ For testing payment callbacks, GitHub webhooks, and other event-driven flows:
 
 Or use the `webhook-test` prompt to automate this flow.
 
+### Using Journeys
+
+If the project has `journeys` configured, use them to follow structured test flows:
+
+1. **List journeys** — call `list_journeys` to see all available flows, their dependencies, and suggested execution order.
+2. **Follow the order** — execute journeys in dependency order. A journey with `dependsOn: ['login']` requires the `login` journey to complete first.
+3. **Get journey details** — call `get_journey` with the journey name to see full step-by-step instructions.
+4. **Two modes**:
+   - `guided` — follow steps strictly, verify each `expect` assertion.
+   - `autonomous` — use steps as a map, explore freely around the defined actions.
+5. **Track progress** — call `journey_status` to see which journeys are complete, in progress, or failed.
+6. **Auth per journey** — if a journey has `auth: 'buyer'`, authenticate with that role before starting.
+
+### Framework-Aware Testing
+
+Call `detect_framework` at the start of a session to get framework-specific hints:
+
+- **React/Next.js**: Use `type()` instead of `fill()` for controlled inputs, wait for hydration after navigation.
+- **Vue/Nuxt**: `v-model` inputs need `type()` tool for reactivity.
+- **SPA frameworks**: Don't rely on full page loads — use `waitForURL()` for route changes.
+- **The tool also reports**: database package in use, SPA behavior, and framework version.
+
 ### Self-Optimization
 
 The agent gets smarter over time by learning from past sessions:
@@ -274,7 +330,7 @@ export default defineConfig({
     port: 4173,
   },
 
-  // Optional: auth for multi-role testing
+  // Optional: auth for multi-role testing (form, jwt, oauth, cookie, storage-state, custom)
   auth: {
     admin: {
       strategy: 'form',
@@ -286,6 +342,22 @@ export default defineConfig({
         usernameEnv: 'ADMIN_EMAIL',
         passwordEnv: 'ADMIN_PASSWORD',
       },
+    },
+    apiUser: {
+      strategy: 'jwt',
+      jwt: {
+        tokenEnv: 'API_TOKEN',
+        storageKey: 'token',
+        storageType: 'localStorage', // or 'sessionStorage', 'cookie'
+      },
+    },
+  },
+
+  // Optional: suppress known noisy errors
+  capture: {
+    suppressErrors: {
+      console: ['ResizeObserver loop', 'third-party-script'],
+      network: ['/analytics', '/tracking', 'hotjar.com'],
     },
   },
 
@@ -318,6 +390,44 @@ export default defineConfig({
   // Optional: self-optimization (enabled by default)
   learning: {
     enabled: true,
+  },
+
+  // Optional: app profile — gives the AI context about your app
+  app: {
+    name: 'My App',
+    baseUrl: 'http://localhost:3000',
+    description: 'E-commerce marketplace',
+    pages: [
+      { path: '/login', label: 'Login', priority: 'high' },
+      { path: '/dashboard', label: 'Dashboard', auth: 'admin' },
+      { path: '/products', label: 'Product catalog', priority: 'medium' },
+    ],
+    ignorePatterns: ['/api/health', '/static/*'],
+  },
+
+  // Optional: multi-step test flows
+  journeys: {
+    login: {
+      description: 'User login flow',
+      mode: 'guided',
+      steps: [
+        { action: 'navigate', target: '/login' },
+        { action: 'fill', target: '#email', value: 'user@test.com' },
+        { action: 'fill', target: '#password', value: 'pass123' },
+        { action: 'click', target: 'button[type=submit]', expect: 'URL changes to /dashboard' },
+      ],
+    },
+    checkout: {
+      description: 'Checkout flow',
+      auth: 'buyer',
+      dependsOn: ['login'],
+      mode: 'guided',
+      steps: [
+        { action: 'navigate', target: '/cart' },
+        { action: 'click', target: '.checkout-btn' },
+        { action: 'click', target: '#pay', expect: 'Order confirmation shown' },
+      ],
+    },
   },
 });
 ```
@@ -368,3 +478,7 @@ Reports are saved to `.f4tl/reports/`:
 - **File bugs immediately** — don't wait until the end. File as you find them so evidence step IDs are fresh.
 - **End with `report_generate` format `html`** — it produces the richest output with embedded screenshots.
 - **Use `report_get_session_summary` to check progress** — see how many steps, bugs, and findings you've recorded so far.
+- **Run `detect_framework` first** — get framework-specific testing hints before you start testing.
+- **Use `suppress_error` for noisy third-party errors** — e.g. analytics scripts, ResizeObserver warnings. Keeps reports clean.
+- **Follow journeys when configured** — `list_journeys` → `get_journey` → execute steps → `journey_status` to track progress.
+- **Use `get_app_profile` for context** — if the app profile is configured, it tells you what pages exist, which need auth, and what to ignore.

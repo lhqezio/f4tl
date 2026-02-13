@@ -15,11 +15,17 @@ export interface SessionConfig {
   keepArtifacts: boolean;
 }
 
+export interface SuppressErrorsConfig {
+  console: string[];
+  network: string[];
+}
+
 export interface CaptureConfig {
   format: 'png' | 'jpeg';
   quality: number;
   fullPage: boolean;
   animations: 'disabled' | 'allow';
+  suppressErrors?: SuppressErrorsConfig;
 }
 
 export interface McpConfig {
@@ -63,12 +69,27 @@ export interface AuthFormLogin {
   passwordEnv: string;
 }
 
+export interface AuthJwtConfig {
+  tokenEnv: string;
+  storageKey: string;
+  storageType: 'localStorage' | 'sessionStorage' | 'cookie';
+}
+
+export interface AuthOauthConfig {
+  provider: string;
+  authUrl: string;
+  clientIdEnv: string;
+  callbackUrl: string;
+}
+
 export interface AuthConfig {
-  strategy: 'form' | 'cookie' | 'storage-state' | 'custom';
+  strategy: 'form' | 'cookie' | 'storage-state' | 'custom' | 'jwt' | 'oauth';
   formLogin?: AuthFormLogin;
   cookies?: { domain: string; items: { name: string; valueEnv: string }[] };
   storageStatePath?: string;
   customScriptPath?: string;
+  jwt?: AuthJwtConfig;
+  oauth?: AuthOauthConfig;
 }
 
 export interface ContextOptions {
@@ -77,6 +98,24 @@ export interface ContextOptions {
   locale?: string;
   timezoneId?: string;
 }
+
+export interface JourneyStep {
+  action: string;
+  target?: string;
+  value?: string;
+  expect?: string;
+  note?: string;
+}
+
+export interface JourneyDefinition {
+  description: string;
+  auth?: string;
+  dependsOn?: string[];
+  mode: 'guided' | 'autonomous';
+  steps: JourneyStep[];
+}
+
+export type JourneysConfig = Record<string, JourneyDefinition>;
 
 export interface ReportConfig {
   outputDir: string;
@@ -100,6 +139,8 @@ export interface F4tlConfig {
   dashboard: DashboardConfig;
   webhooks?: WebhookConfig;
   learning?: LearningConfig;
+  app?: AppConfig;
+  journeys?: JourneysConfig;
 }
 
 // ── Browser Action Types ─────────────────────────────────────────────────────
@@ -421,6 +462,21 @@ export interface WebhookConfig {
 }
 
 // ── Learning Types ───────────────────────────────────────────────────────────
+
+export interface AppPage {
+  path: string;
+  label?: string;
+  auth?: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface AppConfig {
+  name?: string;
+  baseUrl: string;
+  description?: string;
+  pages?: AppPage[];
+  ignorePatterns?: string[];
+}
 
 export interface LearningConfig {
   enabled: boolean;

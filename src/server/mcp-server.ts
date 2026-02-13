@@ -48,6 +48,11 @@ import { WebhookHandler } from '../core/webhook-handler.js';
 import { SessionHistory } from '../core/session-history.js';
 import { WebhookTools, discoverSchema, fireSchema } from './tools/webhook.js';
 import { LearningTools, getHistorySchema, getBugsSchema, compareSchema } from './tools/learning.js';
+import { SuppressionTools, suppressErrorSchema } from './tools/suppression.js';
+import { FrameworkTools } from './tools/framework.js';
+import { AuthTools, authLoginSchema } from './tools/auth.js';
+import { JourneyRunner } from '../core/journey-runner.js';
+import { JourneyTools, getJourneySchema } from './tools/journey.js';
 import { registerPrompts } from './prompts.js';
 import type { F4tlConfig } from '../types/index.js';
 
@@ -67,6 +72,10 @@ export class F4tlServer {
   private reportTools: ReportTools;
   private webhookTools: WebhookTools | null = null;
   private learningTools: LearningTools | null = null;
+  private suppressionTools: SuppressionTools;
+  private frameworkTools: FrameworkTools;
+  private authTools: AuthTools | null = null;
+  private journeyTools: JourneyTools | null = null;
 
   constructor(private config: F4tlConfig) {
     this.mcp = new McpServer(
@@ -86,6 +95,19 @@ export class F4tlServer {
       this.sessionManager,
       config.session.outputDir,
     );
+    this.suppressionTools = new SuppressionTools(this.browserManager);
+    this.frameworkTools = new FrameworkTools(this.browserManager, config.codebase);
+
+    // Conditional: auth
+    if (config.auth && Object.keys(config.auth).length > 0) {
+      this.authTools = new AuthTools(this.browserManager, config.auth);
+    }
+
+    // Conditional: journeys
+    if (config.journeys && Object.keys(config.journeys).length > 0) {
+      const runner = new JourneyRunner(config.journeys);
+      this.journeyTools = new JourneyTools(runner);
+    }
 
     // Conditional: logs
     if (config.logs && Object.keys(config.logs).length > 0) {
@@ -116,7 +138,12 @@ export class F4tlServer {
     this.registerCodeTools();
     this.registerContextTools();
     this.registerReportTools();
+    this.registerSuppressionTools();
+    this.registerFrameworkTools();
+    if (config.app) this.registerAppTools();
 
+    if (this.authTools) this.registerAuthTools();
+    if (this.journeyTools) this.registerJourneyTools();
     if (this.logTools) this.registerLogTools();
     if (this.dbTools) this.registerDatabaseTools();
     if (this.webhookTools) this.registerWebhookTools();
@@ -478,6 +505,92 @@ export class F4tlServer {
     );
   }
 
+  // ── App Profile Tools (1) ────────────────────────────────────────────────
+
+  private registerAppTools(): void {
+    const appConfig = this.config.app;
+
+    this.mcp.tool(
+      'get_app_profile',
+      'Get the configured app profile (name, baseUrl, pages, roles, ignore patterns). Provides context about the target application under test.',
+      async () => {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(appConfig, null, 2),
+            },
+          ],
+        };
+      },
+    );
+  }
+
+  // ── Suppression Tools (1) ────────────────────────────────────────────────
+
+  private registerSuppressionTools(): void {
+    const t = this.suppressionTools;
+
+    this.mcp.tool(
+      'suppress_error',
+      'Add a runtime error suppression pattern (regex). Suppresses matching console or network errors from capture results.',
+      suppressErrorSchema.shape,
+      (params) => t.suppressError(suppressErrorSchema.parse(params)),
+    );
+  }
+
+  // ── Framework Tools (1) ──────────────────────────────────────────────────
+
+  private registerFrameworkTools(): void {
+    const t = this.frameworkTools;
+
+    this.mcp.tool(
+      'detect_framework',
+      'Detect the frontend framework, SPA behavior, and database from package.json and runtime checks. Returns framework-specific testing hints.',
+      async () => t.detect(),
+    );
+  }
+
+  // ── Auth Tools (1) ───────────────────────────────────────────────────────
+
+  private registerAuthTools(): void {
+    const t = this.authTools;
+    if (!t) return;
+
+    this.mcp.tool(
+      'auth_login',
+      'Authenticate the current browser context with a configured role. Supports form, cookie, storage-state, jwt, oauth, and custom strategies.',
+      authLoginSchema.shape,
+      (params) => t.login(authLoginSchema.parse(params)),
+    );
+  }
+
+  // ── Journey Tools (3) ────────────────────────────────────────────────────
+
+  private registerJourneyTools(): void {
+    const t = this.journeyTools;
+    if (!t) return;
+
+    this.mcp.tool(
+      'list_journeys',
+      'List all configured test journeys with descriptions, modes, dependencies, and current status.',
+      async () => t.listJourneys(),
+    );
+
+    this.mcp.tool(
+      'get_journey',
+      'Get full journey definition with steps, auth requirements, and current progress.',
+      getJourneySchema.shape,
+      (params) => t.getJourney(getJourneySchema.parse(params)),
+    );
+
+    this.mcp.tool(
+      'journey_status',
+      'Get status of all journeys (pending/in_progress/completed/failed) in the current session.',
+      async () => t.journeyStatus(),
+    );
+  }
+
   // ── Webhook Tools (2) ─────────────────────────────────────────────────────
 
   private registerWebhookTools(): void {
@@ -588,7 +701,12 @@ export class F4tlServer {
       4 + // code
       2 + // context (new_context, switch_context)
       4 + // report
-      (this.config.auth && Object.keys(this.config.auth).length > 0 ? 1 : 0) + // auth
+      1 + // suppression
+      1 + // framework detection
+      (this.config.app ? 1 : 0) + // app profile
+      (this.config.auth && Object.keys(this.config.auth).length > 0 ? 1 : 0) + // browser_auth (context)
+      (this.authTools ? 1 : 0) + // auth_login
+      (this.journeyTools ? 3 : 0) + // journeys
       (this.logTools ? 3 : 0) + // logs
       (this.dbTools ? 3 : 0) + // db
       (this.webhookTools ? 2 : 0) + // webhook

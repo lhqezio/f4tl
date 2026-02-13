@@ -10,6 +10,10 @@ import {
   dashboardConfigSchema,
   webhookConfigSchema,
   learningConfigSchema,
+  appConfigSchema,
+  authConfigSchema,
+  journeysConfigSchema,
+  journeySchema,
 } from '../../src/config/schema.js';
 
 describe('configSchema', () => {
@@ -63,6 +67,28 @@ describe('captureConfigSchema', () => {
 
   it('rejects bmp format', () => {
     expect(() => captureConfigSchema.parse({ format: 'bmp' })).toThrow();
+  });
+
+  it('accepts suppressErrors with patterns', () => {
+    const result = captureConfigSchema.parse({
+      suppressErrors: {
+        console: ['React warning', 'DevTools'],
+        network: ['analytics\\.google'],
+      },
+    });
+    expect(result.suppressErrors?.console).toEqual(['React warning', 'DevTools']);
+    expect(result.suppressErrors?.network).toEqual(['analytics\\.google']);
+  });
+
+  it('defaults suppressErrors arrays when provided empty', () => {
+    const result = captureConfigSchema.parse({ suppressErrors: {} });
+    expect(result.suppressErrors?.console).toEqual([]);
+    expect(result.suppressErrors?.network).toEqual([]);
+  });
+
+  it('makes suppressErrors optional', () => {
+    const result = captureConfigSchema.parse({});
+    expect(result.suppressErrors).toBeUndefined();
   });
 });
 
@@ -202,5 +228,198 @@ describe('learningConfigSchema', () => {
   it('accepts enabled false', () => {
     const result = learningConfigSchema.parse({ enabled: false });
     expect(result.enabled).toBe(false);
+  });
+});
+
+describe('appConfigSchema', () => {
+  it('requires baseUrl', () => {
+    expect(() => appConfigSchema.parse({})).toThrow();
+  });
+
+  it('accepts minimal config with just baseUrl', () => {
+    const result = appConfigSchema.parse({ baseUrl: 'http://localhost:3000' });
+    expect(result.baseUrl).toBe('http://localhost:3000');
+    expect(result.name).toBeUndefined();
+    expect(result.pages).toBeUndefined();
+  });
+
+  it('accepts full config with pages', () => {
+    const result = appConfigSchema.parse({
+      name: 'My App',
+      baseUrl: 'http://localhost:3000',
+      description: 'E-commerce platform',
+      pages: [
+        { path: '/login', label: 'Login', priority: 'high' },
+        { path: '/dashboard', auth: 'admin' },
+        { path: '/products' },
+      ],
+      ignorePatterns: ['/api/health', '/static/*'],
+    });
+    expect(result.name).toBe('My App');
+    expect(result.pages).toHaveLength(3);
+    expect(result.pages![0].priority).toBe('high');
+    expect(result.pages![1].auth).toBe('admin');
+    expect(result.pages![2].priority).toBe('medium'); // default
+    expect(result.ignorePatterns).toEqual(['/api/health', '/static/*']);
+  });
+
+  it('rejects invalid baseUrl', () => {
+    expect(() => appConfigSchema.parse({ baseUrl: 'not-a-url' })).toThrow();
+  });
+
+  it('defaults page priority to medium', () => {
+    const result = appConfigSchema.parse({
+      baseUrl: 'http://localhost:3000',
+      pages: [{ path: '/home' }],
+    });
+    expect(result.pages![0].priority).toBe('medium');
+  });
+
+  it('is optional in root configSchema', () => {
+    const result = configSchema.parse({});
+    expect(result.app).toBeUndefined();
+  });
+
+  it('is included in root configSchema when provided', () => {
+    const result = configSchema.parse({
+      app: { baseUrl: 'http://localhost:3000', name: 'Test App' },
+    });
+    expect(result.app?.name).toBe('Test App');
+    expect(result.app?.baseUrl).toBe('http://localhost:3000');
+  });
+});
+
+describe('authConfigSchema', () => {
+  it('accepts jwt strategy with defaults', () => {
+    const result = authConfigSchema.parse({
+      strategy: 'jwt',
+      jwt: { tokenEnv: 'JWT_TOKEN' },
+    });
+    expect(result.strategy).toBe('jwt');
+    expect(result.jwt?.storageKey).toBe('token');
+    expect(result.jwt?.storageType).toBe('localStorage');
+  });
+
+  it('accepts jwt strategy with custom storage', () => {
+    const result = authConfigSchema.parse({
+      strategy: 'jwt',
+      jwt: { tokenEnv: 'AUTH_TOKEN', storageKey: 'auth', storageType: 'sessionStorage' },
+    });
+    expect(result.jwt?.storageKey).toBe('auth');
+    expect(result.jwt?.storageType).toBe('sessionStorage');
+  });
+
+  it('accepts jwt with cookie storage type', () => {
+    const result = authConfigSchema.parse({
+      strategy: 'jwt',
+      jwt: { tokenEnv: 'TOKEN', storageType: 'cookie' },
+    });
+    expect(result.jwt?.storageType).toBe('cookie');
+  });
+
+  it('accepts oauth strategy', () => {
+    const result = authConfigSchema.parse({
+      strategy: 'oauth',
+      oauth: {
+        provider: 'github',
+        authUrl: 'https://github.com/login/oauth/authorize',
+        clientIdEnv: 'GITHUB_CLIENT_ID',
+        callbackUrl: 'http://localhost:3000/auth/callback',
+      },
+    });
+    expect(result.strategy).toBe('oauth');
+    expect(result.oauth?.provider).toBe('github');
+  });
+
+  it('still accepts form strategy', () => {
+    const result = authConfigSchema.parse({
+      strategy: 'form',
+      formLogin: {
+        loginUrl: '/login',
+        usernameSelector: '#email',
+        passwordSelector: '#password',
+        submitSelector: 'button[type=submit]',
+        usernameEnv: 'USER',
+        passwordEnv: 'PASS',
+      },
+    });
+    expect(result.strategy).toBe('form');
+  });
+
+  it('rejects unknown strategy', () => {
+    expect(() => authConfigSchema.parse({ strategy: 'magic' })).toThrow();
+  });
+});
+
+describe('journeySchema', () => {
+  it('accepts a guided journey with steps', () => {
+    const result = journeySchema.parse({
+      description: 'Login flow',
+      steps: [
+        { action: 'navigate', target: '/login' },
+        { action: 'fill', target: '#email', value: 'test@test.com' },
+      ],
+    });
+    expect(result.mode).toBe('guided');
+    expect(result.steps).toHaveLength(2);
+  });
+
+  it('accepts autonomous mode', () => {
+    const result = journeySchema.parse({
+      description: 'Explore',
+      mode: 'autonomous',
+      steps: [{ action: 'navigate', target: '/products' }],
+    });
+    expect(result.mode).toBe('autonomous');
+  });
+
+  it('accepts auth and dependsOn', () => {
+    const result = journeySchema.parse({
+      description: 'Checkout',
+      auth: 'buyer',
+      dependsOn: ['login'],
+      steps: [{ action: 'click', target: '#pay' }],
+    });
+    expect(result.auth).toBe('buyer');
+    expect(result.dependsOn).toEqual(['login']);
+  });
+
+  it('requires description and steps', () => {
+    expect(() => journeySchema.parse({})).toThrow();
+    expect(() => journeySchema.parse({ description: 'No steps' })).toThrow();
+  });
+});
+
+describe('journeysConfigSchema', () => {
+  it('accepts a record of journeys', () => {
+    const result = journeysConfigSchema.parse({
+      login: {
+        description: 'Login',
+        steps: [{ action: 'navigate', target: '/login' }],
+      },
+      checkout: {
+        description: 'Checkout',
+        dependsOn: ['login'],
+        steps: [{ action: 'click', target: '#buy' }],
+      },
+    });
+    expect(Object.keys(result)).toEqual(['login', 'checkout']);
+  });
+
+  it('is optional in root configSchema', () => {
+    const result = configSchema.parse({});
+    expect(result.journeys).toBeUndefined();
+  });
+
+  it('is included in root configSchema when provided', () => {
+    const result = configSchema.parse({
+      journeys: {
+        test: {
+          description: 'Test journey',
+          steps: [{ action: 'navigate', target: '/' }],
+        },
+      },
+    });
+    expect(result.journeys?.test.description).toBe('Test journey');
   });
 });

@@ -171,6 +171,51 @@ export class BrowserManager {
         }
         break;
       }
+
+      case 'jwt': {
+        const jwt = authConfig.jwt;
+        if (!jwt) throw new Error('jwt config required for jwt strategy');
+        const token = process.env[jwt.tokenEnv];
+        if (!token) throw new Error(`Environment variable ${jwt.tokenEnv} not set.`);
+
+        if (jwt.storageType === 'cookie') {
+          const url = page.url();
+          const domain = new URL(url === 'about:blank' ? 'http://localhost' : url).hostname;
+          await this.getActiveContext().context.addCookies([
+            { name: jwt.storageKey, value: token, domain, path: '/' },
+          ]);
+        } else {
+          const storageApi =
+            jwt.storageType === 'sessionStorage' ? 'sessionStorage' : 'localStorage';
+          await page.evaluate(
+            /* istanbul ignore next */
+            ({ api, key, val }: { api: string; key: string; val: string }) => {
+              const storage = (globalThis as Record<string, unknown>)[api] as
+                | { setItem: (k: string, v: string) => void }
+                | undefined;
+              if (storage) storage.setItem(key, val);
+            },
+            { api: storageApi, key: jwt.storageKey, val: token },
+          );
+        }
+        break;
+      }
+
+      case 'oauth': {
+        const oauth = authConfig.oauth;
+        if (!oauth) throw new Error('oauth config required for oauth strategy');
+        const clientId = process.env[oauth.clientIdEnv];
+        if (!clientId) throw new Error(`Environment variable ${oauth.clientIdEnv} not set.`);
+
+        const authUrl = new URL(oauth.authUrl);
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('redirect_uri', oauth.callbackUrl);
+        authUrl.searchParams.set('response_type', 'code');
+
+        await page.goto(authUrl.toString());
+        // User or automation must complete the OAuth flow from here
+        break;
+      }
     }
   }
 
