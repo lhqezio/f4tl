@@ -196,3 +196,54 @@ export async function fetchConfig(): Promise<ConfigResponse> {
   if (!res.ok) throw new Error('Failed to fetch config');
   return res.json();
 }
+
+// ── Agent Types ──────────────────────────────────────────────────────────────
+
+export interface AgentStatus {
+  available: boolean;
+  running: boolean;
+  currentGoal?: string;
+  turnNumber?: number;
+  maxTurns?: number;
+}
+
+export interface AgentConfigResponse {
+  apiKeyConfigured: boolean;
+  defaultModel: string;
+  defaultMaxTurns: number;
+  models: string[];
+}
+
+export async function fetchAgentStatus(): Promise<AgentStatus> {
+  const res = await fetch(`${BASE}/agent/status`);
+  if (!res.ok) throw new Error('Failed to fetch agent status');
+  return res.json();
+}
+
+export async function fetchAgentConfig(): Promise<AgentConfigResponse> {
+  const res = await fetch(`${BASE}/agent/config`);
+  if (!res.ok) throw new Error('Failed to fetch agent config');
+  return res.json();
+}
+
+export async function startAgent(
+  goal: string,
+  opts?: { model?: string; maxTurns?: number },
+): Promise<{ started: boolean; goal: string }> {
+  const res = await fetch(`${BASE}/agent/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goal, ...opts }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to start agent' }));
+    throw new Error(err.error || 'Failed to start agent');
+  }
+  return res.json();
+}
+
+export async function cancelAgent(): Promise<{ cancelled: boolean }> {
+  const res = await fetch(`${BASE}/agent/cancel`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to cancel agent');
+  return res.json();
+}

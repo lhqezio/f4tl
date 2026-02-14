@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import type { SessionStep } from '../lib/api';
 import ScreenshotViewer from './ScreenshotViewer';
+import Tooltip from './Tooltip';
+import { GLOSSARY } from './Glossary';
 
 const CONTEXT_COLORS = [
   'bg-teal-500/20 text-teal-400 border-teal-500/40',
@@ -54,12 +56,13 @@ export default function StepTimeline({ steps, sessionId }: Props) {
   return (
     <div className="space-y-2">
       {hasContexts && (
-        <div className="flex gap-1.5 flex-wrap mb-2">
+        <div className="mb-2 flex flex-wrap gap-1.5">
           {contextNames.map((name) => (
             <button
               key={name}
               onClick={() => toggleContext(name)}
-              className={`px-2 py-0.5 rounded text-xs font-mono border transition-opacity ${contextColorClass(name)} ${
+              aria-pressed={effectiveFilter.has(name)}
+              className={`rounded border px-2 py-0.5 font-mono text-xs transition-opacity ${contextColorClass(name)} ${
                 effectiveFilter.has(name) ? 'opacity-100' : 'opacity-30'
               }`}
             >
@@ -68,48 +71,80 @@ export default function StepTimeline({ steps, sessionId }: Props) {
           ))}
         </div>
       )}
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="text-gray-400 border-b border-gray-800">
-            <th className="py-2 text-left w-10">#</th>
-            {hasContexts && <th className="py-2 text-left w-24">Context</th>}
-            <th className="py-2 text-left">Action</th>
-            <th className="py-2 text-left">URL</th>
-            <th className="py-2 text-right w-20">Duration</th>
-            <th className="py-2 text-left w-32">Error</th>
-            <th className="py-2 text-center w-16">Screenshot</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredSteps.map((step, i) => (
-            <tr key={step.id} className="border-b border-gray-800/50 hover:bg-gray-900/50">
-              <td className="py-2 text-gray-500">{i + 1}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs" role="table">
+          <thead>
+            <tr className="border-b border-gray-800 text-gray-400">
+              <th scope="col" className="w-10 py-2 text-left">
+                #
+              </th>
               {hasContexts && (
-                <td className="py-2">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-xs font-mono border ${contextColorClass(step.contextId ?? 'default')}`}
-                  >
-                    {step.contextId ?? 'default'}
-                  </span>
-                </td>
+                <th scope="col" className="w-24 py-2 text-left">
+                  <Tooltip content={GLOSSARY.context}>
+                    <span className="cursor-help border-b border-dashed border-gray-600">
+                      Context
+                    </span>
+                  </Tooltip>
+                </th>
               )}
-              <td className="py-2 font-mono text-gray-200">{step.action.type}</td>
-              <td className="py-2 text-gray-400 truncate max-w-xs">{step.metadata.url}</td>
-              <td className="py-2 text-right text-gray-400">{step.duration}ms</td>
-              <td className="py-2">
-                {step.error && (
-                  <span className="text-red-400 truncate block max-w-xs" title={step.error}>
-                    {step.error.slice(0, 60)}
-                  </span>
-                )}
-              </td>
-              <td className="py-2 text-center">
-                <ScreenshotViewer sessionId={sessionId} stepId={step.id} />
-              </td>
+              <th scope="col" className="py-2 text-left">
+                Action
+              </th>
+              <th scope="col" className="py-2 text-left">
+                URL
+              </th>
+              <th scope="col" className="w-20 py-2 text-right">
+                Duration
+              </th>
+              <th scope="col" className="w-32 py-2 text-left">
+                Error
+              </th>
+              <th scope="col" className="w-16 py-2 text-center">
+                Screenshot
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filteredSteps.map((step, i) => (
+              <tr key={step.id} className="border-b border-gray-800/50 hover:bg-gray-900/50">
+                <td className="py-2 text-gray-500">{i + 1}</td>
+                {hasContexts && (
+                  <td className="py-2">
+                    <span
+                      className={`rounded border px-1.5 py-0.5 font-mono text-xs ${contextColorClass(step.contextId ?? 'default')}`}
+                    >
+                      {step.contextId ?? 'default'}
+                    </span>
+                  </td>
+                )}
+                <td className="py-2 font-mono text-gray-200">{step.action.type}</td>
+                <td className="py-2 max-w-xs truncate text-gray-400">
+                  {step.metadata.url && step.metadata.url.length > 50 ? (
+                    <Tooltip content={step.metadata.url}>
+                      <span className="cursor-help">{step.metadata.url}</span>
+                    </Tooltip>
+                  ) : (
+                    step.metadata.url
+                  )}
+                </td>
+                <td className="py-2 text-right text-gray-400">{step.duration}ms</td>
+                <td className="py-2">
+                  {step.error && (
+                    <Tooltip content={step.error}>
+                      <span className="block max-w-xs cursor-help truncate text-red-400">
+                        {step.error.slice(0, 60)}
+                      </span>
+                    </Tooltip>
+                  )}
+                </td>
+                <td className="py-2 text-center">
+                  <ScreenshotViewer sessionId={sessionId} stepId={step.id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -126,6 +126,13 @@ export interface DashboardConfig {
   host: string;
 }
 
+export interface AgentConfig {
+  apiKey?: string;
+  model: string;
+  maxTurns: number;
+  systemPrompt?: string;
+}
+
 export interface F4tlConfig {
   browser: BrowserConfig;
   session: SessionConfig;
@@ -141,6 +148,7 @@ export interface F4tlConfig {
   learning?: LearningConfig;
   app?: AppConfig;
   journeys?: JourneysConfig;
+  agent?: AgentConfig;
 }
 
 // ── Browser Action Types ─────────────────────────────────────────────────────

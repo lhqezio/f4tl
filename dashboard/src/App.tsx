@@ -6,6 +6,7 @@ import LiveView from './pages/LiveView';
 import HistoryView from './pages/HistoryView';
 import ConfigView from './pages/ConfigView';
 import GettingStarted from './pages/GettingStarted';
+import AgentView from './pages/AgentView';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/session/:id" element={<SessionDetail />} />
           <Route path="/live" element={<LiveView />} />
           <Route path="/history" element={<HistoryView />} />
+          <Route path="/agent" element={<AgentView />} />
           <Route path="/config" element={<ConfigView />} />
           <Route path="/guide" element={<GettingStarted />} />
         </Route>

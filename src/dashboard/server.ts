@@ -7,6 +7,8 @@ import type { ServerType } from '@hono/node-server';
 import type { SessionManager } from '../core/session-manager.js';
 import type { ReportManager } from '../core/report-manager.js';
 import type { SessionHistory } from '../core/session-history.js';
+import type { F4tlServer } from '../server/mcp-server.js';
+import type { AgentRunner } from '../core/agent-runner.js';
 import type {
   BugSeverity,
   DashboardConfig,
@@ -26,6 +28,8 @@ export class DashboardServer {
   }>();
   private injectWebSocket: ReturnType<typeof createNodeWebSocket>['injectWebSocket'];
 
+  private agentRunner: AgentRunner | null = null;
+
   constructor(
     private config: DashboardConfig,
     private sessionConfig: SessionConfig,
@@ -33,7 +37,10 @@ export class DashboardServer {
     private reportManager: ReportManager | null = null,
     private sessionHistory: SessionHistory | null = null,
     private fullConfig: F4tlConfig | null = null,
+    private f4tlServer: F4tlServer | null = null,
+    agentRunner?: AgentRunner | null,
   ) {
+    this.agentRunner = agentRunner ?? null;
     this.app = new Hono();
     const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({
       app: this.app,
@@ -273,6 +280,112 @@ export class DashboardServer {
       return c.json({ config: sanitized, features, detectedFramework });
     });
 
+    // ── Agent endpoints ───────────────────────────────────────────────────────
+
+    api.get('/agent/status', (c) => {
+      const runner = this.agentRunner;
+      const apiKeyConfigured = !!(this.fullConfig?.agent?.apiKey || process.env.ANTHROPIC_API_KEY);
+      if (!runner) {
+        return c.json({ available: apiKeyConfigured, running: false });
+      }
+      return c.json({
+        available: apiKeyConfigured,
+        running: runner.isRunning(),
+        currentGoal: runner.getCurrentGoal(),
+        turnNumber: runner.getTurnNumber(),
+        maxTurns: runner.getMaxTurns(),
+      });
+    });
+
+    api.get('/agent/config', (c) => {
+      const apiKeyConfigured = !!(this.fullConfig?.agent?.apiKey || process.env.ANTHROPIC_API_KEY);
+      return c.json({
+        apiKeyConfigured,
+        defaultModel: this.fullConfig?.agent?.model || 'claude-sonnet-4-20250514',
+        defaultMaxTurns: this.fullConfig?.agent?.maxTurns || 50,
+        models: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'claude-haiku-4-20250514'],
+      });
+    });
+
+    api.post('/agent/start', async (c) => {
+      const apiKey = this.fullConfig?.agent?.apiKey || process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return c.json({ error: 'ANTHROPIC_API_KEY not configured' }, 400);
+      }
+
+      if (this.agentRunner?.isRunning()) {
+        return c.json({ error: 'Agent is already running' }, 409);
+      }
+
+      const body = await c.req
+        .json<{ goal: string; model?: string; maxTurns?: number }>()
+        .catch(() => null);
+      if (!body?.goal) {
+        return c.json({ error: 'Goal is required' }, 400);
+      }
+
+      // Create runner on demand if not already present
+      if (!this.agentRunner && this.f4tlServer) {
+        const { AgentRunner: AR } = await import('../core/agent-runner.js');
+        const toolExecutor = this.f4tlServer.buildToolExecutor();
+        this.agentRunner = new AR(
+          {
+            apiKey,
+            model: body.model || this.fullConfig?.agent?.model || 'claude-sonnet-4-20250514',
+            maxTurns: body.maxTurns || this.fullConfig?.agent?.maxTurns || 50,
+            systemPrompt: this.fullConfig?.agent?.systemPrompt,
+          },
+          toolExecutor,
+        );
+      }
+
+      if (!this.agentRunner) {
+        return c.json({ error: 'Agent not available (no f4tl server)' }, 500);
+      }
+
+      // Start headless session if needed
+      if (this.f4tlServer && !this.sessionManager?.getSession()) {
+        await this.f4tlServer.startHeadless();
+      }
+
+      // Wire agent events to WebSocket broadcast
+      const runner = this.agentRunner;
+      const broadcastAgent = (type: string, data: unknown) => {
+        const payload = JSON.stringify({ type, timestamp: Date.now(), data });
+        for (const client of this.wsClients) {
+          try {
+            client.send(payload);
+          } catch {
+            this.wsClients.delete(client);
+          }
+        }
+      };
+
+      runner.on('agent:start', (d: unknown) => broadcastAgent('agent:start', d));
+      runner.on('agent:turn', (d: unknown) => broadcastAgent('agent:turn', d));
+      runner.on('agent:tool_call', (d: unknown) => broadcastAgent('agent:tool_call', d));
+      runner.on('agent:tool_result', (d: unknown) => broadcastAgent('agent:tool_result', d));
+      runner.on('agent:thinking', (d: unknown) => broadcastAgent('agent:thinking', d));
+      runner.on('agent:complete', (d: unknown) => broadcastAgent('agent:complete', d));
+      runner.on('agent:error', (d: unknown) => broadcastAgent('agent:error', d));
+      runner.on('agent:cancelled', (d: unknown) => broadcastAgent('agent:cancelled', d));
+
+      // Fire and forget — return immediately
+      runner.run(body.goal).catch((err) => {
+        broadcastAgent('agent:error', { error: (err as Error).message });
+      });
+
+      return c.json({ started: true, goal: body.goal });
+    });
+
+    api.post('/agent/cancel', (c) => {
+      if (!this.agentRunner?.isRunning()) {
+        return c.json({ error: 'No agent running' }, 400);
+      }
+      this.agentRunner.cancel();
+      return c.json({ cancelled: true });
+    });
+
     this.app.route('/api', api);
 
     // WebSocket
@@ -295,7 +408,7 @@ export class DashboardServer {
 
     // SPA fallback: serve index.html for non-API, non-asset routes
     this.app.get('*', async (c) => {
-      const distDir = join(import.meta.dirname ?? __dirname, '../../dist/dashboard');
+      const distDir = join(import.meta.dirname ?? __dirname, 'dashboard');
       const reqPath = new URL(c.req.url).pathname;
 
       // Try serving static file first
@@ -423,6 +536,12 @@ function sanitizeConfig(cfg: F4tlConfig): Record<string, unknown> {
         }
       }
     }
+  }
+
+  // Mask agent API key
+  const agent = clone.agent as Record<string, unknown> | undefined;
+  if (agent?.apiKey) {
+    agent.apiKey = '***';
   }
 
   // Mask webhook signing secrets

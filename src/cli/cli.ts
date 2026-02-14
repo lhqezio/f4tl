@@ -30,6 +30,7 @@ async function runServe(args: { headless?: boolean; dashboard?: boolean }) {
       server.getReportManager(),
       sessionHistory,
       config,
+      server,
     );
     await dashboard.start();
   }
@@ -453,11 +454,141 @@ const dashboardCommand = defineCommand({
       null,
       sessionHistory,
       config,
+      null,
+      null,
     );
     await dashboard.start();
 
     console.error('[f4tl] Dashboard running in standalone mode (historical sessions only)');
     await new Promise(() => {});
+  },
+});
+
+const agentCommand = defineCommand({
+  meta: {
+    name: 'agent',
+    description: 'Run the built-in Claude agent to autonomously test your app',
+  },
+  args: {
+    goal: {
+      type: 'positional',
+      description: 'Testing goal (e.g. "Smoke test https://myapp.com")',
+      required: true,
+    },
+    headless: {
+      type: 'boolean',
+      description: 'Run browser in headless mode',
+    },
+    model: {
+      type: 'string',
+      description: 'Anthropic model to use',
+    },
+    'max-turns': {
+      type: 'string',
+      description: 'Maximum agent turns (default: 50)',
+    },
+    dashboard: {
+      type: 'boolean',
+      description: 'Co-host the dashboard',
+      default: true,
+    },
+  },
+  async run({ args }) {
+    const { loadF4tlConfig } = await import('../config/loader.js');
+    const { F4tlServer } = await import('../server/mcp-server.js');
+    const { AgentRunner } = await import('../core/agent-runner.js');
+
+    const overrides: Record<string, unknown> = {};
+    if (args.headless !== undefined) {
+      overrides.browser = { headless: args.headless };
+    }
+
+    const config = await loadF4tlConfig(overrides as never);
+
+    // Check for API key
+    const apiKey = config.agent?.apiKey || process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.error(
+        '[f4tl] Error: ANTHROPIC_API_KEY not set. Set it as an environment variable or in agent.apiKey config.',
+      );
+      process.exit(1);
+    }
+
+    const server = new F4tlServer(config);
+    await server.startHeadless();
+
+    const toolExecutor = server.buildToolExecutor();
+    console.error(`[f4tl] Agent mode: ${toolExecutor.getToolCount()} tools available`);
+
+    const agentConfig = {
+      apiKey,
+      model: args.model || config.agent?.model || 'claude-sonnet-4-20250514',
+      maxTurns: args['max-turns']
+        ? parseInt(args['max-turns'], 10)
+        : (config.agent?.maxTurns ?? 50),
+      systemPrompt: config.agent?.systemPrompt,
+    };
+
+    const runner = new AgentRunner(agentConfig, toolExecutor);
+
+    // Wire console output
+    runner.on('agent:start', (data: { goal: string; maxTurns: number }) => {
+      console.error(`[f4tl] Agent started: "${data.goal}" (max ${data.maxTurns} turns)`);
+    });
+    runner.on('agent:turn', (data: { turnNumber: number; maxTurns: number }) => {
+      console.error(`[f4tl] Turn ${data.turnNumber}/${data.maxTurns}`);
+    });
+    runner.on('agent:tool_call', (data: { name: string }) => {
+      console.error(`[f4tl]   → ${data.name}`);
+    });
+    runner.on('agent:thinking', (data: { text: string }) => {
+      const preview = data.text.length > 200 ? data.text.slice(0, 200) + '...' : data.text;
+      console.error(`[f4tl]   💭 ${preview}`);
+    });
+    runner.on('agent:complete', (data: { turns: number; duration: number }) => {
+      console.error(
+        `[f4tl] Agent complete: ${data.turns} turns in ${(data.duration / 1000).toFixed(1)}s`,
+      );
+    });
+    runner.on('agent:error', (data: { error: string }) => {
+      console.error(`[f4tl] Agent error: ${data.error}`);
+    });
+
+    // Optional dashboard
+    if (args.dashboard) {
+      const { DashboardServer } = await import('../dashboard/server.js');
+      const { SessionHistory } = await import('../core/session-history.js');
+      const sessionHistory =
+        config.learning?.enabled !== false ? new SessionHistory(config.session.outputDir) : null;
+      const dashboard = new DashboardServer(
+        config.dashboard,
+        config.session,
+        server.getSessionManager(),
+        server.getReportManager(),
+        sessionHistory,
+        config,
+        server,
+        runner,
+      );
+      await dashboard.start();
+    }
+
+    // Run agent
+    const result = await runner.run(args.goal);
+
+    if (result.error) {
+      console.error(`[f4tl] Agent failed: ${result.error}`);
+      process.exit(1);
+    }
+
+    if (result.cancelled) {
+      console.error('[f4tl] Agent was cancelled');
+    }
+
+    console.error(
+      `[f4tl] Done. ${result.totalTurns} turns, ${(result.duration / 1000).toFixed(1)}s`,
+    );
+    process.exit(0);
   },
 });
 
@@ -474,5 +605,6 @@ export const main = defineCommand({
     clean: cleanCommand,
     sessions: sessionsCommand,
     dashboard: dashboardCommand,
+    agent: agentCommand,
   },
 });

@@ -55,6 +55,7 @@ import { JourneyRunner } from '../core/journey-runner.js';
 import { JourneyTools, getJourneySchema } from './tools/journey.js';
 import { ConfigGenTools, generateConfigSchema } from './tools/config-gen.js';
 import { registerPrompts } from './prompts.js';
+import { ToolExecutor } from '../core/tool-executor.js';
 import type { F4tlConfig } from '../types/index.js';
 
 export class F4tlServer {
@@ -733,11 +734,283 @@ export class F4tlServer {
     console.error(`[f4tl] MCP server ready (${toolCount} tools, 10 prompts registered)`);
   }
 
+  /**
+   * Launch browser, start session, start optional services — but skip MCP stdio transport.
+   * Used by agent mode to reuse the same tool infrastructure without MCP.
+   */
+  async startHeadless(): Promise<void> {
+    console.error('[f4tl] Starting headless (agent mode)...');
+
+    await this.browserManager.launch();
+    console.error('[f4tl] Browser launched');
+
+    if (this.logCollector) {
+      this.logCollector.start();
+      console.error('[f4tl] Log collector started');
+    }
+
+    if (this.dbConnector) {
+      try {
+        await this.dbConnector.connect();
+        console.error('[f4tl] Database connected');
+      } catch (err) {
+        console.error('[f4tl] Database connection failed (tools will error on use):', err);
+      }
+    }
+
+    const sessionId = this.sessionManager.startSession(this.config);
+    this.reportManager.setSessionId(sessionId);
+    console.error(`[f4tl] Headless session started: ${sessionId}`);
+  }
+
+  /**
+   * Build a ToolExecutor with all registered tools for agent use.
+   */
+  buildToolExecutor(): ToolExecutor {
+    const te = new ToolExecutor();
+    const bt = this.browserTools;
+    const nt = this.networkTools;
+    const ct = this.codeTools;
+    const rt = this.reportTools;
+    const bm = this.browserManager;
+
+    // Browser tools (15)
+    te.register('browser_navigate', 'Navigate to a URL', navigateSchema, (p) =>
+      bt.navigate(navigateSchema.parse(p)),
+    );
+    te.register('browser_click', 'Click an element', clickSchema, (p) =>
+      bt.click(clickSchema.parse(p)),
+    );
+    te.register('browser_fill', 'Fill an input field', fillSchema, (p) =>
+      bt.fill(fillSchema.parse(p)),
+    );
+    te.register('browser_type', 'Type text keystroke-by-keystroke', typeSchema, (p) =>
+      bt.type(typeSchema.parse(p)),
+    );
+    te.register('browser_select', 'Select a dropdown option', selectSchema, (p) =>
+      bt.select(selectSchema.parse(p)),
+    );
+    te.register('browser_hover', 'Hover over an element', hoverSchema, (p) =>
+      bt.hover(hoverSchema.parse(p)),
+    );
+    te.register('browser_press', 'Press a keyboard key', pressSchema, (p) =>
+      bt.press(pressSchema.parse(p)),
+    );
+    te.register('browser_scroll', 'Scroll the page', scrollSchema, (p) =>
+      bt.scroll(scrollSchema.parse(p)),
+    );
+    te.register('browser_screenshot', 'Take a screenshot', screenshotSchema, (p) =>
+      bt.screenshot(screenshotSchema.parse(p)),
+    );
+    te.register('browser_evaluate', 'Execute JavaScript', evaluateSchema, (p) =>
+      bt.evaluate(evaluateSchema.parse(p)),
+    );
+    te.register('browser_resize', 'Resize the viewport', resizeSchema, (p) =>
+      bt.resize(resizeSchema.parse(p)),
+    );
+    te.register('browser_wait', 'Wait for condition', waitSchema, (p) =>
+      bt.wait(waitSchema.parse(p)),
+    );
+    te.register('browser_back', 'Navigate back', z.object({}), () => bt.back());
+    te.register('browser_forward', 'Navigate forward', z.object({}), () => bt.forward());
+    te.register(
+      'browser_accessibility_tree',
+      'Get accessibility tree',
+      accessibilityTreeSchema,
+      (p) => bt.accessibilityTree(accessibilityTreeSchema.parse(p)),
+    );
+
+    // Network tools (4)
+    te.register('network_get_requests', 'Get HTTP requests', getRequestsSchema, (p) =>
+      nt.getRequests(getRequestsSchema.parse(p)),
+    );
+    te.register('network_intercept', 'Add intercept rule', interceptSchema, (p) =>
+      nt.intercept(interceptSchema.parse(p)),
+    );
+    te.register('network_clear_intercepts', 'Clear intercept rules', z.object({}), () =>
+      nt.clearIntercepts(),
+    );
+    te.register('network_get_websockets', 'Get WebSocket messages', getWebSocketsSchema, (p) =>
+      nt.getWebSockets(getWebSocketsSchema.parse(p)),
+    );
+
+    // Code tools (4)
+    te.register('code_search', 'Search codebase', searchSchema, (p) =>
+      ct.search(searchSchema.parse(p)),
+    );
+    te.register('code_read', 'Read a file', readFileSchema, (p) =>
+      ct.readFile(readFileSchema.parse(p)),
+    );
+    te.register('code_find_files', 'Find files by glob', findFilesSchema, (p) =>
+      ct.findFiles(findFilesSchema.parse(p)),
+    );
+    te.register('code_git_diff', 'Get git diff', gitDiffSchema, (p) =>
+      ct.gitDiff(gitDiffSchema.parse(p)),
+    );
+
+    // Context tools (2)
+    const contextNewSchema = z.object({
+      name: z.string().describe('Context name'),
+      viewport: z.object({ width: z.number(), height: z.number() }).optional(),
+      userAgent: z.string().optional(),
+      locale: z.string().optional(),
+      timezoneId: z.string().optional(),
+    });
+    te.register(
+      'browser_new_context',
+      'Create new browser context',
+      contextNewSchema,
+      async (p) => {
+        try {
+          await bm.createContext(p.name as string, {
+            viewport: p.viewport as { width: number; height: number } | undefined,
+            userAgent: p.userAgent as string | undefined,
+            locale: p.locale as string | undefined,
+            timezoneId: p.timezoneId as string | undefined,
+          });
+          bm.switchContext(p.name as string);
+          return {
+            content: [
+              { type: 'text' as const, text: `Context "${p.name}" created and activated.` },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [{ type: 'text' as const, text: `Error: ${(err as Error).message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+    te.register(
+      'browser_switch_context',
+      'Switch browser context',
+      z.object({ name: z.string() }),
+      async (p) => {
+        try {
+          bm.switchContext(p.name as string);
+          return { content: [{ type: 'text' as const, text: `Switched to context "${p.name}".` }] };
+        } catch (err) {
+          return {
+            content: [{ type: 'text' as const, text: `Error: ${(err as Error).message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    // Report tools (4)
+    te.register('report_create_bug', 'Record a bug', createBugSchema, (p) =>
+      rt.createBug(createBugSchema.parse(p)),
+    );
+    te.register('report_add_finding', 'Record a finding', addFindingSchema, (p) =>
+      rt.addFinding(addFindingSchema.parse(p)),
+    );
+    te.register('report_generate', 'Generate a report', generateReportSchema, (p) =>
+      rt.generateReport(generateReportSchema.parse(p)),
+    );
+    te.register('report_get_session_summary', 'Get session statistics', z.object({}), () =>
+      rt.getSessionSummary(),
+    );
+
+    // Suppression (1)
+    te.register('suppress_error', 'Suppress error pattern', suppressErrorSchema, (p) =>
+      this.suppressionTools.suppressError(suppressErrorSchema.parse(p)),
+    );
+
+    // Framework (1)
+    te.register('detect_framework', 'Detect frontend framework', z.object({}), () =>
+      this.frameworkTools.detect(),
+    );
+
+    // Config gen (1)
+    te.register('generate_config', 'Analyze project for config', generateConfigSchema, (p) =>
+      this.configGenTools.generateConfig(generateConfigSchema.parse(p)),
+    );
+
+    // Conditional tools
+    if (this.authTools) {
+      const auth = this.authTools;
+      te.register('auth_login', 'Authenticate with role', authLoginSchema, (p) =>
+        auth.login(authLoginSchema.parse(p)),
+      );
+    }
+    if (this.journeyTools) {
+      const journeys = this.journeyTools;
+      te.register('list_journeys', 'List test journeys', z.object({}), () =>
+        journeys.listJourneys(),
+      );
+      te.register('get_journey', 'Get journey details', getJourneySchema, (p) =>
+        journeys.getJourney(getJourneySchema.parse(p)),
+      );
+      te.register('journey_status', 'Get journey status', z.object({}), () =>
+        journeys.journeyStatus(),
+      );
+    }
+    if (this.logTools) {
+      const logs = this.logTools;
+      te.register('logs_tail', 'Get recent logs', tailSchema, (p) =>
+        logs.tail(tailSchema.parse(p)),
+      );
+      te.register('logs_get', 'Get logs with filters', getLogsSchema, (p) =>
+        logs.getLogs(getLogsSchema.parse(p)),
+      );
+      te.register('logs_search', 'Search logs', searchLogsSchema, (p) =>
+        logs.searchLogs(searchLogsSchema.parse(p)),
+      );
+    }
+    if (this.dbTools) {
+      const db = this.dbTools;
+      te.register('db_query', 'Execute SQL query', querySchema, (p) =>
+        db.query(querySchema.parse(p)),
+      );
+      te.register('db_schema', 'Get database schema', schemaSchema, (p) =>
+        db.schema(schemaSchema.parse(p)),
+      );
+      te.register('db_explain', 'Get query plan', explainSchema, (p) =>
+        db.explain(explainSchema.parse(p)),
+      );
+    }
+    if (this.webhookTools) {
+      const webhooks = this.webhookTools;
+      te.register('webhook_discover', 'Discover webhook endpoints', discoverSchema, (p) =>
+        webhooks.discover(discoverSchema.parse(p)),
+      );
+      te.register('webhook_fire', 'Fire synthetic webhook', fireSchema, (p) =>
+        webhooks.fire(fireSchema.parse(p)),
+      );
+    }
+    if (this.learningTools) {
+      const learning = this.learningTools;
+      te.register('session_get_history', 'Get session history', getHistorySchema, (p) =>
+        learning.getHistory(getHistorySchema.parse(p)),
+      );
+      te.register('session_get_bugs', 'Get bug ledger', getBugsSchema, (p) =>
+        learning.getBugs(getBugsSchema.parse(p)),
+      );
+      te.register('session_compare', 'Compare sessions', compareSchema, (p) =>
+        learning.compare(compareSchema.parse(p)),
+      );
+    }
+    if (this.config.app) {
+      const appConfig = this.config.app;
+      te.register('get_app_profile', 'Get app profile', z.object({}), async () => ({
+        content: [{ type: 'text' as const, text: JSON.stringify(appConfig, null, 2) }],
+      }));
+    }
+
+    return te;
+  }
+
   getSessionManager(): SessionManager {
     return this.sessionManager;
   }
 
   getReportManager(): ReportManager {
     return this.reportManager;
+  }
+
+  getConfig(): F4tlConfig {
+    return this.config;
   }
 }

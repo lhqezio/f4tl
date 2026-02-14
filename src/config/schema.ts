@@ -155,6 +155,13 @@ export const learningConfigSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
+export const agentConfigSchema = z.object({
+  apiKey: z.string().optional(),
+  model: z.string().default('claude-sonnet-4-20250514'),
+  maxTurns: z.number().int().min(1).max(500).default(50),
+  systemPrompt: z.string().optional(),
+});
+
 export const configSchema = z.object({
   browser: browserConfigSchema.default({}),
   session: sessionConfigSchema.default({}),
@@ -170,6 +177,7 @@ export const configSchema = z.object({
   learning: learningConfigSchema.optional(),
   app: appConfigSchema.optional(),
   journeys: journeysConfigSchema.optional(),
+  agent: agentConfigSchema.optional(),
 });
 
 export type ValidatedConfig = z.infer<typeof configSchema>;

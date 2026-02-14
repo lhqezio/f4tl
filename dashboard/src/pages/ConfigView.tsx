@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useConfig } from '../hooks/useConfig';
+import { SkeletonCard } from '../components/Skeleton';
+import ErrorState from '../components/ErrorState';
 
 const featureLabels: Record<string, string> = {
   auth: 'Auth',
@@ -12,24 +14,35 @@ const featureLabels: Record<string, string> = {
 };
 
 export default function ConfigView() {
-  const { data, isLoading, error } = useConfig();
+  const { data, isLoading, error, refetch } = useConfig();
 
   if (isLoading) {
-    return <div className="text-gray-400">Loading config...</div>;
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold text-gray-100">Configuration</h1>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error || !data) {
     return (
-      <div className="text-red-400">
-        Failed to load config. Make sure the server was started with config available.
-      </div>
+      <ErrorState
+        title="Failed to load config"
+        message="Make sure the server was started with config available."
+        onRetry={() => refetch()}
+      />
     );
   }
 
   const { config, features, detectedFramework } = data;
 
   return (
-    <div className="space-y-6">
+    <div className="animate-fadeIn space-y-6">
       <div className="flex items-center gap-4">
         <h1 className="text-xl font-bold text-gray-100">Configuration</h1>
         {detectedFramework && (
@@ -88,17 +101,25 @@ function ConfigSection({ label, value }: { label: string; value: unknown }) {
         type="button"
         className="flex w-full items-center justify-between px-4 py-3 text-left"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
       >
         <span className="text-sm font-medium text-gray-200">{label}</span>
-        <span className="text-xs text-gray-500">{open ? '▼' : '▶'}</span>
+        <svg
+          className={`h-4 w-4 text-gray-500 transition-transform ${open ? 'rotate-90' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
       </button>
-      {open && (
+      <div className={`overflow-hidden transition-all ${open ? 'max-h-96' : 'max-h-0'}`}>
         <div className="border-t border-gray-700/50 px-4 py-3">
-          <pre className="max-h-96 overflow-auto text-xs text-gray-400">
+          <pre className="max-h-80 overflow-auto text-xs text-gray-400">
             {JSON.stringify(value, null, 2)}
           </pre>
         </div>
-      )}
+      </div>
     </div>
   );
 }

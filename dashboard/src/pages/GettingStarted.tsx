@@ -1,4 +1,6 @@
 import { useConfig } from '../hooks/useConfig';
+import { useSessions } from '../hooks/useSessions';
+import { SkeletonText } from '../components/Skeleton';
 
 const toolCategories = [
   { name: 'Browser', count: 15 },
@@ -71,10 +73,21 @@ const featureLabels: Record<string, string> = {
 
 export default function GettingStarted() {
   const { data } = useConfig();
+  const { data: sessions } = useSessions();
+  const isFirstTime = !sessions || sessions.length === 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <h1 className="text-xl font-bold text-gray-100">Getting Started</h1>
+    <div className="mx-auto max-w-3xl space-y-8 animate-fadeIn">
+      {isFirstTime ? (
+        <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-6 text-center">
+          <h1 className="mb-2 text-2xl font-bold text-orange-400">Welcome to f4tl</h1>
+          <p className="text-sm text-gray-400">
+            AI-powered QA testing framework. Follow the steps below to get started.
+          </p>
+        </div>
+      ) : (
+        <h1 className="text-xl font-bold text-gray-100">Getting Started</h1>
+      )}
 
       {/* Setup Steps */}
       <section className="space-y-4">
@@ -100,7 +113,7 @@ export default function GettingStarted() {
       </section>
 
       {/* Config Health */}
-      {data && (
+      {data ? (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-200">Config Health</h2>
           {data.detectedFramework && (
@@ -127,6 +140,11 @@ export default function GettingStarted() {
               );
             })}
           </div>
+        </section>
+      ) : (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-200">Config Health</h2>
+          <SkeletonText lines={4} />
         </section>
       )}
 

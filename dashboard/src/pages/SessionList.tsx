@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useSessions } from '../hooks/useSessions';
 import StatusBadge from '../components/StatusBadge';
+import { SkeletonTable } from '../components/Skeleton';
+import ErrorState from '../components/ErrorState';
+import EmptyState from '../components/EmptyState';
 
 function formatDuration(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -10,41 +13,77 @@ function formatDuration(ms: number): string {
 }
 
 export default function SessionList() {
-  const { data: sessions, isLoading, error } = useSessions();
+  const { data: sessions, isLoading, error, refetch } = useSessions();
 
   if (isLoading) {
-    return <p className="text-gray-500 text-sm">Loading sessions...</p>;
-  }
-
-  if (error) {
-    return <p className="text-red-400 text-sm">Failed to load sessions.</p>;
-  }
-
-  if (!sessions || sessions.length === 0) {
     return (
-      <div className="text-center py-20">
-        <p className="text-gray-500">No sessions yet.</p>
-        <p className="text-gray-600 text-sm mt-1">
-          Start a QA session with <code className="text-orange-400">f4tl serve</code>
-        </p>
+      <div>
+        <h1 className="mb-4 text-xl font-bold">Sessions</h1>
+        <SkeletonTable rows={5} />
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <ErrorState
+        title="Failed to load sessions"
+        message="Could not fetch session data from the server."
+        onRetry={() => refetch()}
+      />
+    );
+  }
+
+  if (!sessions || sessions.length === 0) {
+    return (
+      <EmptyState
+        icon={
+          <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
+          </svg>
+        }
+        title="No sessions yet"
+        description="Start a QA session to begin testing. Sessions will appear here with their results."
+        action={{ label: 'Getting Started', to: '/guide' }}
+      />
+    );
+  }
+
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">Sessions</h1>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+    <div className="animate-fadeIn">
+      <h1 className="mb-4 text-xl font-bold">Sessions</h1>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-sm" role="table">
           <thead>
-            <tr className="text-gray-400 border-b border-gray-800 text-left">
-              <th className="py-2 pr-4">ID</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Started</th>
-              <th className="py-2 pr-4 text-right">Duration</th>
-              <th className="py-2 pr-4 text-right">Steps</th>
-              <th className="py-2 pr-4 text-right">Bugs</th>
-              <th className="py-2 text-right">Findings</th>
+            <tr className="border-b border-gray-800 text-left text-gray-400">
+              <th scope="col" className="py-2 pr-4">
+                ID
+              </th>
+              <th scope="col" className="py-2 pr-4">
+                Status
+              </th>
+              <th scope="col" className="py-2 pr-4">
+                Started
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right">
+                Duration
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right">
+                Steps
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right">
+                Bugs
+              </th>
+              <th scope="col" className="py-2 text-right">
+                Findings
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -53,7 +92,7 @@ export default function SessionList() {
                 <td className="py-2 pr-4">
                   <Link
                     to={`/session/${s.id}`}
-                    className="text-orange-400 hover:underline font-mono text-xs"
+                    className="font-mono text-xs text-orange-400 hover:underline"
                   >
                     {s.id}
                   </Link>
@@ -61,10 +100,10 @@ export default function SessionList() {
                 <td className="py-2 pr-4">
                   <StatusBadge status={s.status} />
                 </td>
-                <td className="py-2 pr-4 text-gray-400 text-xs">
+                <td className="py-2 pr-4 text-xs text-gray-400">
                   {new Date(s.startTime).toLocaleString()}
                 </td>
-                <td className="py-2 pr-4 text-right text-gray-400 text-xs">
+                <td className="py-2 pr-4 text-right text-xs text-gray-400">
                   {formatDuration(s.duration)}
                 </td>
                 <td className="py-2 pr-4 text-right">{s.stepCount}</td>
@@ -80,6 +119,32 @@ export default function SessionList() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {sessions.map((s) => (
+          <Link
+            key={s.id}
+            to={`/session/${s.id}`}
+            className="block rounded-lg border border-gray-800 bg-gray-900/50 p-4 transition-colors hover:border-gray-700"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-mono text-xs text-orange-400">{s.id}</span>
+              <StatusBadge status={s.status} />
+            </div>
+            <div className="mb-2 text-xs text-gray-500">
+              {new Date(s.startTime).toLocaleString()} — {formatDuration(s.duration)}
+            </div>
+            <div className="flex gap-4 text-xs">
+              <span className="text-gray-400">{s.stepCount} steps</span>
+              <span className={s.bugCount > 0 ? 'text-red-400' : 'text-gray-600'}>
+                {s.bugCount} bugs
+              </span>
+              <span className="text-gray-400">{s.findingCount} findings</span>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
